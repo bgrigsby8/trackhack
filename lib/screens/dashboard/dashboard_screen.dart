@@ -98,7 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Center(child: CircularProgressIndicator()),
             )
           else if (projectProvider.projects.isEmpty)
-            _buildEmptyProjectsView(context)
+            Expanded(child: _buildEmptyProjectsView(context))
           else
             Expanded(
               child: Column(
@@ -246,33 +246,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: completedProjects.length,
-                    itemBuilder: (context, index) {
-                      final project = completedProjects[index];
-                      return ListTile(
-                        title: Text(project.title),
-                        subtitle: Row(
-                          children: [
-                            const Icon(Icons.book,
-                                size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text('ISBN: ${project.isbn}'),
-                            const SizedBox(width: 16),
-                            const Icon(Icons.calendar_today,
-                                size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(
-                                'Completed: ${_formatDate(project.completedAt!)}'),
-                          ],
-                        ),
-                        trailing:
-                            const Icon(Icons.check_circle, color: Colors.green),
-                        onTap: () => _navigateToProject(context, project),
-                      );
-                    },
+                : Container(
+                    constraints: const BoxConstraints(maxHeight: 300),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      physics: const ClampingScrollPhysics(),
+                      itemCount: completedProjects.length,
+                      itemBuilder: (context, index) {
+                        final project = completedProjects[index];
+                        return ListTile(
+                          title: Text(project.title),
+                          subtitle: Row(
+                            children: [
+                              const Icon(Icons.book,
+                                  size: 14, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Text('ISBN: ${project.isbn}'),
+                              const SizedBox(width: 16),
+                              const Icon(Icons.calendar_today,
+                                  size: 14, color: Colors.grey),
+                              const SizedBox(width: 4),
+                              Text(
+                                  'Completed: ${_formatDate(project.completedAt!)}'),
+                            ],
+                          ),
+                          trailing: const Icon(Icons.check_circle,
+                              color: Colors.green),
+                          onTap: () => _navigateToProject(context, project),
+                        );
+                      },
+                    ),
                   ),
         ],
       ),
@@ -280,34 +283,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildEmptyProjectsView(BuildContext context) {
-    return Expanded(
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.book_outlined,
-              size: 64,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'No projects yet',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Create your first book project to get started',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => _showAddProjectDialog(context),
-              icon: const Icon(Icons.add),
-              label: const Text('Add Project'),
-            ),
-          ],
-        ),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            Icons.book_outlined,
+            size: 64,
+            color: Colors.grey,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No projects yet',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Create your first book project to get started',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => _showAddProjectDialog(context),
+            icon: const Icon(Icons.add),
+            label: const Text('Add Project'),
+          ),
+        ],
       ),
     );
   }
@@ -370,6 +371,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           'EPUB'),
     };
 
+    // Return a scrollable row that contains the kanban columns
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: kanbanColumns.entries.map((entry) {
@@ -511,71 +513,78 @@ class _DashboardScreenState extends State<DashboardScreen> {
             )
           else
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
-                children: [
-                  // OVERDUE SECTION
-                  if (overdueProjects.isNotEmpty) ...[
-                    // Overdue header
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 8, top: 4),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 4, horizontal: 8),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.warning_amber,
-                              color: Colors.red, size: 12),
-                          SizedBox(width: 4),
-                          Text(
-                            'Overdue',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red,
-                              fontSize: 12,
-                            ),
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                  child: Column(
+                    children: [
+                      // OVERDUE SECTION
+                      if (overdueProjects.isNotEmpty) ...[
+                        // Overdue header
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 8, top: 4),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 8),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.warning_amber,
+                                  color: Colors.red, size: 12),
+                              SizedBox(width: 4),
+                              Text(
+                                'Overdue',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    // Overdue projects list
-                    ...overdueProjects.map((project) =>
-                        _buildProjectCard(context, project, isOverdue: true)),
-                    // Add a divider if both sections are present
-                    if (upcomingProjects.isNotEmpty)
-                      const Divider(height: 24, thickness: 1),
-                  ],
+                        ),
+                        // Overdue projects list
+                        ...overdueProjects.map((project) => _buildProjectCard(
+                            context, project,
+                            isOverdue: true)),
+                        // Add a divider if both sections are present
+                        if (upcomingProjects.isNotEmpty)
+                          const Divider(height: 24, thickness: 1),
+                      ],
 
-                  // UPCOMING SECTION
-                  if (upcomingProjects.isNotEmpty) ...[
-                    // Upcoming header
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 8, top: 4),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 4, horizontal: 8),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.schedule, color: Colors.grey, size: 12),
-                          SizedBox(width: 4),
-                          Text(
-                            'Upcoming',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey,
-                              fontSize: 12,
-                            ),
+                      // UPCOMING SECTION
+                      if (upcomingProjects.isNotEmpty) ...[
+                        // Upcoming header
+                        Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 8, top: 4),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 8),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.schedule,
+                                  color: Colors.grey, size: 12),
+                              SizedBox(width: 4),
+                              Text(
+                                'Upcoming',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    // Upcoming projects list
-                    ...upcomingProjects
-                        .map((project) => _buildProjectCard(context, project)),
-                  ],
-                ],
+                        ),
+                        // Upcoming projects list
+                        ...upcomingProjects.map(
+                            (project) => _buildProjectCard(context, project)),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
         ],
@@ -926,14 +935,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final descriptionController = TextEditingController();
     final productionEditorController = TextEditingController();
     final formatController = TextEditingController();
-    
+
     // Controllers for metadata fields
     final imprintController = TextEditingController();
     final notesController = TextEditingController();
     final printerDateController = TextEditingController();
     final scDateController = TextEditingController();
     final pubDateController = TextEditingController();
-    
+
     // Controllers for additional metadata
     final ukCoPubController = TextEditingController();
     // Boolean values for metadata checkboxes
@@ -1181,7 +1190,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Metadata Section Header
                   const Text(
                     'Metadata',
@@ -1191,10 +1200,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
+
                   // Metadata fields in a compact format
                   _buildMetadataSection(
-                    context: context, 
+                    context: context,
                     setState: setState,
                     imprintController: imprintController,
                     notesController: notesController,
@@ -1209,7 +1218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       });
                     },
                   ),
-                  
+
                   const SizedBox(height: 16),
 
                   // Project Schedule Section Header
@@ -1539,10 +1548,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 // Always start with Design phase and first step
                 // Parse metadata date fields
-                DateTime? printerDate = parseDateMMDDYYYY(printerDateController.text);
+                DateTime? printerDate =
+                    parseDateMMDDYYYY(printerDateController.text);
                 DateTime? scDate = parseDateMMDDYYYY(scDateController.text);
                 DateTime? pubDate = parseDateMMDDYYYY(pubDateController.text);
-                
+
                 final newProject = ProjectModel(
                   id: '', // Will be set by the service
                   title: titleController.text,
@@ -1565,7 +1575,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   // Metadata fields
                   imprint: imprintController.text.trim(),
                   printerDate: printerDate,
-                  scDate: scDate, 
+                  scDate: scDate,
                   pubDate: pubDate,
                   notes: notesController.text.trim(),
                   ukCoPub: ukCoPubController.text.trim(),
@@ -1736,7 +1746,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-  
+
   // Show dialog to import CSV file
   void _showImportCsvDialog(BuildContext context) {
     showDialog(
@@ -1744,7 +1754,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (context) => const ImportCsvDialog(),
     );
   }
-  
+
   // Method to build the metadata section
   Widget _buildMetadataSection({
     required BuildContext context,
@@ -1788,7 +1798,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: const InputDecoration(
                           hintText: 'Enter imprint',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
@@ -1797,9 +1808,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Row 2: Dates
           Row(
             children: [
@@ -1820,16 +1831,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: const InputDecoration(
                           hintText: 'MM/DD/YYYY',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               // S.C. Date
               Expanded(
                 child: Column(
@@ -1847,16 +1859,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: const InputDecoration(
                           hintText: 'MM/DD/YYYY',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               // Pub Date
               Expanded(
                 child: Column(
@@ -1874,7 +1887,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: const InputDecoration(
                           hintText: 'MM/DD/YYYY',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
@@ -1883,9 +1897,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Row 3: Notes
           Row(
             children: [
@@ -1905,7 +1919,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: const InputDecoration(
                           hintText: 'Additional notes',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                         ),
                         maxLines: 2,
                       ),
@@ -1915,9 +1930,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Row 4: Checkboxes
           Row(
             children: [
@@ -1938,14 +1953,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         decoration: const InputDecoration(
                           hintText: 'UK co-publication details',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               // Page Count Sent checkbox
               Expanded(
                 child: Row(
