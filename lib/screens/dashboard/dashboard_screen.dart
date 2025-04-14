@@ -18,7 +18,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   String _searchQuery = '';
   // Map to track sorting direction for each column
   // true = newest first (default), false = oldest first
-  Map<String, bool> _columnSortDirections = {
+  final Map<String, bool> _columnSortDirections = {
     'Design': true,
     'Paging': true,
     'Proofing': true,
@@ -452,6 +452,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     labelPadding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    side: BorderSide.none,
                   ),
                   Text(
                     'Due: ${_formatDate(project.deadline)}',
@@ -557,41 +558,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }).toList();
   }
 
-  String _getMainStatusLabel(ProjectMainStatus status) {
-    switch (status) {
-      case ProjectMainStatus.design:
-        return 'Design';
-      case ProjectMainStatus.paging:
-        return 'Paging';
-      case ProjectMainStatus.proofing:
-        return 'Proofing';
-      case ProjectMainStatus.epub:
-        return 'EPUB';
-      case ProjectMainStatus.other:
-        return 'Other';
-    }
-  }
-
-  Color _getMainStatusColor(ProjectMainStatus status) {
-    switch (status) {
-      case ProjectMainStatus.design:
-        return Colors.purple;
-      case ProjectMainStatus.paging:
-        return Colors.blue;
-      case ProjectMainStatus.proofing:
-        return Colors.orange;
-      case ProjectMainStatus.epub:
-        return Colors.green;
-      case ProjectMainStatus.other:
-        return Colors.grey;
-    }
-  }
-
   String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
-  String _formatDateMMDDYYYY(DateTime date) {
     return '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year}';
   }
 
@@ -631,32 +598,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
     final deadlineController = TextEditingController(
-      text: _formatDateMMDDYYYY(
+      text: _formatDate(
         DateTime.now().add(const Duration(days: 30)),
       ),
     );
-
-    // Default selection values
-    ProjectMainStatus selectedMainStatus = ProjectMainStatus.other;
-    String selectedSubStatus = 'notTransmitted';
-    // ignore: unused_local_variable
-    DateTime selectedDeadline = DateTime.now().add(const Duration(days: 30));
 
     // Map to store dates for each sub-status
     final Map<String, DateTime> statusDates = {};
     final Map<String, TextEditingController> dateControllers = {};
 
-    // Set the current date as the default for all Proofing sub-statuses
+    // Set up date controllers for each substatus type with properly spaced dates
     final now = DateTime.now();
-    for (final subStatus in ProjectModel.proofingSubStatuses) {
-      statusDates[subStatus['value']!] = now;
-      dateControllers[subStatus['value']!] = TextEditingController(
-        text: _formatDateMMDDYYYY(now),
-      );
+
+    // Calculate durations between design, paging, proofing, and epub phases
+    // Each phase is scheduled for 2 weeks
+    final designStartDate = now;
+    final pagingStartDate =
+        now.add(const Duration(days: 14)); // 2 weeks after design start
+    final proofingStartDate = pagingStartDate
+        .add(const Duration(days: 14)); // 2 weeks after paging start
+    final epubStartDate = proofingStartDate
+        .add(const Duration(days: 14)); // 2 weeks after proofing start
+
+    // Setup controllers for all substatus types with reasonable spacing between steps
+    void setupDateControllers(
+        List<Map<String, String>> subStatuses, DateTime phaseStartDate) {
+      for (final subStatus in subStatuses) {
+        // Space steps within each phase evenly
+        final daysToAdd = (subStatuses.indexOf(subStatus) * 3); // 3 days apart
+        final dueDate = phaseStartDate.add(Duration(days: daysToAdd));
+
+        dateControllers[subStatus['value']!] = TextEditingController(
+          text: _formatDate(dueDate),
+        );
+        // We'll just set up the controllers, but NOT store in statusDates map
+        // This way steps won't appear completed initially
+        // Plans will still be stored in controllers for form validation purposes
+      }
     }
 
+    // Setup all status types with appropriate phase start dates
+    setupDateControllers(ProjectModel.designSubStatuses, designStartDate);
+    setupDateControllers(ProjectModel.pagingSubStatuses, pagingStartDate);
+    setupDateControllers(ProjectModel.proofingSubStatuses, proofingStartDate);
+    setupDateControllers(ProjectModel.epubSubStatuses, epubStartDate);
+
+    // Other statuses at the end
+    setupDateControllers(ProjectModel.otherSubStatuses,
+        epubStartDate.add(const Duration(days: 14)));
+
     // Helper function to validate and parse data
-    DateTime? _parseDateMMDDYYYY(String input) {
+    DateTime? parseDateMMDDYYYY(String input) {
       // Check format MM/DD/YYYY
       final RegExp dateRegex = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
       final match = dateRegex.firstMatch(input);
@@ -719,234 +711,271 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Main Status dropdown
+                  // Project Schedule Section Header
                   const Text(
-                    'Main Status',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  DropdownButtonFormField<ProjectMainStatus>(
-                    value: selectedMainStatus,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
+                    'Project Schedule',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
                     ),
-                    items: ProjectMainStatus.values.map((status) {
-                      return DropdownMenuItem(
-                        value: status,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: _getMainStatusColor(status),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(_getMainStatusLabel(status)),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedMainStatus = value;
-
-                          // Set appropriate default sub-status based on main status
-                          switch (value) {
-                            case ProjectMainStatus.design:
-                              selectedSubStatus = 'initial';
-                              break;
-                            case ProjectMainStatus.paging:
-                              selectedSubStatus = 'initial';
-                              break;
-                            case ProjectMainStatus.proofing:
-                              selectedSubStatus = 'firstPass';
-                              break;
-                            case ProjectMainStatus.epub:
-                              selectedSubStatus = 'sentEPub';
-                              break;
-                            case ProjectMainStatus.other:
-                              selectedSubStatus = 'notTransmitted';
-                              break;
-                          }
-                        });
-                      }
-                    },
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'New projects always start in the Design phase and progress through each stage. '
+                    'Please set target dates for each step below:',
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey,
+                    ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Sub-Status section that changes based on main status
-                  if (selectedMainStatus == ProjectMainStatus.proofing) ...[
-                    const Text('Proofing Status:',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    DropdownButtonFormField<String>(
-                      value: selectedSubStatus,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      items: ProjectModel.proofingSubStatuses.map((subStatus) {
-                        return DropdownMenuItem(
-                          value: subStatus['value'],
-                          child: Text(subStatus['label']!),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedSubStatus = value;
-                          });
-                        }
-                      },
+                  // 1. DESIGN PHASE
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.purple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: Colors.purple.withValues(alpha: 0.3)),
                     ),
-                    const SizedBox(height: 16),
-
-                    // Status dates for proofing
-                    const Text('Status Dates:',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    ...ProjectModel.proofingSubStatuses.map((subStatus) {
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${subStatus['label']!} Date:',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Phase 1: Design',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.purple,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                            'Schedule target dates for all design steps:'),
+                        const SizedBox(height: 12),
+                        ...ProjectModel.designSubStatuses.map((subStatus) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${subStatus['label']!} Date:',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller:
+                                      dateControllers[subStatus['value']],
+                                  decoration: const InputDecoration(
+                                    hintText: 'MM/DD/YYYY',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  onChanged: (value) {
+                                    final date = parseDateMMDDYYYY(value);
+                                    if (date != null) {
+                                      setState(() {
+                                        statusDates[subStatus['value']!] = date;
+                                      });
+                                    }
+                                  },
+                                )
+                              ],
                             ),
-                            const SizedBox(height: 4),
-                            TextField(
-                              controller: dateControllers[subStatus['value']],
-                              decoration: const InputDecoration(
-                                hintText: 'MM/DD/YYYY',
-                                border: OutlineInputBorder(),
-                              ),
-                              onChanged: (value) {
-                                final date = _parseDateMMDDYYYY(value);
-                                if (date != null) {
-                                  setState(() {
-                                    statusDates[subStatus['value']!] = date;
-                                  });
-                                }
-                              },
-                            )
-                          ],
-                        ),
-                      );
-                    }),
-                  ] else if (selectedMainStatus ==
-                      ProjectMainStatus.design) ...[
-                    const Text('Design Status:',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    // Placeholder for design sub-statuses
-                    DropdownButtonFormField<String>(
-                      value: selectedSubStatus,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'initial',
-                          child: Text('Initial Design'),
-                        ),
+                          );
+                        }),
                       ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedSubStatus = value;
-                          });
-                        }
-                      },
                     ),
-                  ] else if (selectedMainStatus ==
-                      ProjectMainStatus.paging) ...[
-                    const Text('Paging Status:',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    // Placeholder for paging sub-statuses
-                    DropdownButtonFormField<String>(
-                      value: selectedSubStatus,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'initial',
-                          child: Text('Initial Paging'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedSubStatus = value;
-                          });
-                        }
-                      },
-                    ),
-                  ] else ...[
-                    const Text('Other Status:',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 4),
-                    DropdownButtonFormField<String>(
-                      value: selectedSubStatus,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'notTransmitted',
-                          child: Text('Not Transmitted'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'press',
-                          child: Text('At Press'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'epub',
-                          child: Text('E-book'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'published',
-                          child: Text('Published'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) {
-                          setState(() {
-                            selectedSubStatus = value;
-                          });
-                        }
-                      },
-                    ),
-                  ],
-
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Project Deadline',
-                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 4),
-                  TextField(
-                    controller: deadlineController,
-                    decoration: const InputDecoration(
-                      hintText: 'MM/DD/YYYY',
-                      border: OutlineInputBorder(),
+
+                  // 2. PAGING PHASE
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border:
+                          Border.all(color: Colors.blue.withValues(alpha: 0.3)),
                     ),
-                    onChanged: (value) {
-                      final date = _parseDateMMDDYYYY(value);
-                      if (date != null) {
-                        setState(() {
-                          selectedDeadline = date;
-                        });
-                      }
-                    },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Phase 2: Paging',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                            'Schedule target dates for all paging steps:'),
+                        const SizedBox(height: 12),
+                        ...ProjectModel.pagingSubStatuses.map((subStatus) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${subStatus['label']!} Date:',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller:
+                                      dateControllers[subStatus['value']],
+                                  decoration: const InputDecoration(
+                                    hintText: 'MM/DD/YYYY',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  onChanged: (value) {
+                                    final date = parseDateMMDDYYYY(value);
+                                    if (date != null) {
+                                      setState(() {
+                                        statusDates[subStatus['value']!] = date;
+                                      });
+                                    }
+                                  },
+                                )
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+
+                  // 3. PROOFING PHASE
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: Colors.orange.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Phase 3: Proofing',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.orange,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                            'Schedule target dates for all proofing steps:'),
+                        const SizedBox(height: 12),
+                        ...ProjectModel.proofingSubStatuses.map((subStatus) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${subStatus['label']!} Date:',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller:
+                                      dateControllers[subStatus['value']],
+                                  decoration: const InputDecoration(
+                                    hintText: 'MM/DD/YYYY',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  onChanged: (value) {
+                                    final date = parseDateMMDDYYYY(value);
+                                    if (date != null) {
+                                      setState(() {
+                                        statusDates[subStatus['value']!] = date;
+                                      });
+                                    }
+                                  },
+                                )
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+
+                  // 4. E-PUB PHASE
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Phase 4: E-Pub',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: Colors.green,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                            'Schedule target dates for all e-pub steps:'),
+                        const SizedBox(height: 12),
+                        ...ProjectModel.epubSubStatuses.map((subStatus) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${subStatus['label']!} Date:',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                TextField(
+                                  controller:
+                                      dateControllers[subStatus['value']],
+                                  decoration: const InputDecoration(
+                                    hintText: 'MM/DD/YYYY',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                  onChanged: (value) {
+                                    final date = parseDateMMDDYYYY(value);
+                                    if (date != null) {
+                                      setState(() {
+                                        statusDates[subStatus['value']!] = date;
+                                      });
+                                    }
+                                  },
+                                )
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -970,7 +999,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 }
 
                 // Validate deadline
-                final deadline = _parseDateMMDDYYYY(deadlineController.text);
+                final deadline = parseDateMMDDYYYY(deadlineController.text);
                 if (deadline == null) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -980,46 +1009,87 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return;
                 }
 
-                // Validate status dates if needed
-                if (selectedMainStatus == ProjectMainStatus.proofing) {
-                  bool allDatesValid = true;
-                  final Map<String, DateTime> validatedStatusDates = {};
+                // Validate all substatus dates for all phases
+                bool allDatesValid = true;
+                final Map<String, DateTime> validatedStatusDates = {};
+                String? missingPhase;
 
-                  for (final entry in dateControllers.entries) {
-                    final date = _parseDateMMDDYYYY(entry.value.text);
-                    if (date == null) {
+                // Check all phases to ensure every status has a date
+                const List<String> phaseNames = [
+                  'Design',
+                  'Paging',
+                  'Proofing',
+                  'E-Pub'
+                ];
+                final List<List<Map<String, String>>> allPhaseStatuses = [
+                  ProjectModel.designSubStatuses,
+                  ProjectModel.pagingSubStatuses,
+                  ProjectModel.proofingSubStatuses,
+                  ProjectModel.epubSubStatuses,
+                ];
+
+                // Validate dates for all substatus items in all phases
+                for (int phaseIndex = 0;
+                    phaseIndex < allPhaseStatuses.length;
+                    phaseIndex++) {
+                  final subStatuses = allPhaseStatuses[phaseIndex];
+
+                  // Check each substatus in this phase
+                  for (final subStatus in subStatuses) {
+                    final controller = dateControllers[subStatus['value']];
+                    if (controller != null) {
+                      // Check if date is valid
+                      final date = parseDateMMDDYYYY(controller.text);
+                      if (date == null) {
+                        allDatesValid = false;
+                        missingPhase = phaseNames[phaseIndex];
+                        break;
+                      }
+                      // Store target dates but don't mark as completed
+                      validatedStatusDates[subStatus['value']!] = date;
+                    } else {
+                      // Missing controller for a required status
                       allDatesValid = false;
+                      missingPhase = phaseNames[phaseIndex];
                       break;
                     }
-                    validatedStatusDates[entry.key] = date;
                   }
 
                   if (!allDatesValid) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Invalid date format. Use MM/DD/YYYY'),
-                      ),
-                    );
-                    return;
+                    break;
                   }
-
-                  // Update with validated dates
-                  statusDates.clear();
-                  statusDates.addAll(validatedStatusDates);
                 }
+
+                if (!allDatesValid) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(missingPhase != null
+                          ? 'Please fill in all target dates for the $missingPhase phase.'
+                          : 'Please provide valid dates for all phases in MM/DD/YYYY format.'),
+                    ),
+                  );
+                  return;
+                }
+
+                // Create empty statusDates map - no steps will be marked as completed
+                // We'll save the schedule dates, but they won't be shown as completed
+                // in the projects screen
+                statusDates.clear(); // Ensure nothing is marked as completed
 
                 final userId = authProvider.user?.id;
                 if (userId == null) return;
 
+                // Always start with Design phase and first step
                 final newProject = ProjectModel(
                   id: '', // Will be set by the service
                   title: titleController.text,
                   description: descriptionController.text,
-                  mainStatus: selectedMainStatus,
-                  subStatus: selectedSubStatus,
-                  statusDates: selectedMainStatus == ProjectMainStatus.proofing
-                      ? statusDates
-                      : {},
+                  mainStatus:
+                      ProjectMainStatus.design, // Always start at design phase
+                  subStatus: ProjectModel.designSubStatuses.isNotEmpty
+                      ? ProjectModel.designSubStatuses[0]['value']!
+                      : 'design_initial', // First design step
+                  statusDates: {}, // Start with empty statusDates - nothing marked as completed
                   deadline: deadline,
                   ownerId: userId,
                   createdAt: DateTime.now(),

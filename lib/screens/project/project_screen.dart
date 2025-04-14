@@ -98,10 +98,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddDocumentDialog(context, project),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
@@ -321,59 +317,95 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final statusDate = project.getDateForSubStatus(subStatusValue);
     final hasDate = statusDate != null;
 
+    // Determine if this step is next in the sequence
+    final canComplete = project.canCompleteSubStatus(subStatusValue);
+
+    // Completion and UI states
+    final isCompleted = hasDate && project.mainStatus == mainStatus;
+    final isUpcoming =
+        !hasDate && !canComplete; // Neither completed nor next in sequence
+    final isNext = !hasDate &&
+        canComplete &&
+        project.mainStatus == mainStatus; // The next step to complete
+
+    // Visual styling based on step status
+    final TextStyle textStyle;
+    if (isCompleted) {
+      // Completed steps: greyed out with strikethrough
+      textStyle = const TextStyle(
+        fontWeight: FontWeight.normal,
+        color: Colors.grey,
+        decoration: TextDecoration.lineThrough,
+      );
+    } else if (isNext) {
+      // Next step: highlighted with color and bold
+      textStyle = TextStyle(
+        fontWeight: FontWeight.bold,
+        color: color,
+      );
+    } else if (isUpcoming) {
+      // Upcoming steps: regular style, slightly dimmed
+      textStyle = TextStyle(
+        fontWeight: FontWeight.normal,
+        color: Colors.grey[700],
+      );
+    } else {
+      // Current step that's not completed
+      textStyle = TextStyle(
+        fontWeight: isCurrentSubStatus ? FontWeight.bold : FontWeight.normal,
+        color: isCurrentSubStatus ? color : null,
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          // Checkbox
+          // Checkbox - only enabled for the current step in sequence
           Checkbox(
             value: hasDate,
-            activeColor: color,
-            onChanged: (bool? newValue) {
-              _updateSubStatusDate(
-                context,
-                project,
-                subStatusValue,
-                newValue ?? false,
-              );
-            },
+            activeColor: isCompleted ? Colors.grey : color,
+            checkColor: Colors.white,
+            onChanged: isNext || isCompleted
+                ? (bool? newValue) {
+                    _updateSubStatusDate(
+                      context,
+                      project,
+                      subStatusValue,
+                      newValue ?? false,
+                    );
+                  }
+                : null, // Disabled for upcoming steps
           ),
           const SizedBox(width: 8),
 
-          // Status label
+          // Status label with styling based on state
           Expanded(
             child: Text(
               subStatusLabel,
-              style: TextStyle(
-                fontWeight:
-                    isCurrentSubStatus ? FontWeight.bold : FontWeight.normal,
-                color: isCurrentSubStatus ? color : null,
-              ),
+              style: textStyle,
             ),
           ),
 
-          // Completion date
-          if (hasDate)
-            Text(
-              _formatDate(statusDate),
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 12,
-              ),
+          // Display status date for all steps (completed or planned)
+          Text(
+            hasDate
+                ? _formatDate(statusDate) // Show actual completion date
+                : _formatPlannedDate(subStatusValue,
+                    project), // Show planned date if not completed
+            style: TextStyle(
+              color: hasDate
+                  ? Colors.grey[600]
+                  : Colors.grey[400], // Lighter color for planned dates
+              fontSize: 14, // Increased from 12 to 14 for better readability
+              fontStyle: hasDate
+                  ? FontStyle.normal
+                  : FontStyle.italic, // Italics for planned dates
+              fontWeight: hasDate
+                  ? FontWeight.w500 
+                  : FontWeight.normal // Slightly bolder for completed dates
             ),
-
-          // Set as current button (if not current)
-          if (!isCurrentSubStatus)
-            IconButton(
-              icon: const Icon(Icons.play_arrow, size: 18),
-              tooltip: 'Set as current status',
-              onPressed: () => _updateProjectStatus(
-                context,
-                project,
-                mainStatus,
-                subStatusValue,
-              ),
-            ),
+          ),
         ],
       ),
     );
@@ -395,7 +427,29 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   String _formatDate(DateTime date) {
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+    return '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  // Format the planned date for a step that hasn't been completed yet
+  String _formatPlannedDate(String subStatusValue, ProjectModel project) {
+    // Since we don't have actual planned dates in the current model,
+    // we'll generate them based on the project creation date
+    // In a full implementation, you'd retrieve this from a plannedDates map
+
+    // Get list of all substatus values for the current main status
+    final subStatuses =
+        ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
+    final index = subStatuses.indexWhere((s) => s['value'] == subStatusValue);
+
+    if (index >= 0) {
+      // Calculate a planned date based on project creation plus days per step
+      final daysToAdd = index * 7; // One week per step
+      final plannedDate = project.createdAt.add(Duration(days: daysToAdd));
+      return _formatDate(plannedDate);
+    }
+
+    // Fallback if we can't calculate a planned date
+    return '--/--/----';
   }
 
   void _showEditProjectDialog(BuildContext context, ProjectModel project) {
@@ -404,32 +458,170 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   void _showDeleteProjectDialog(BuildContext context, ProjectModel project) {
-    // Delete project dialog implementation
-    // Not implementing in this cleanup
-  }
+    final projectProvider =
+        Provider.of<ProjectProvider>(context, listen: false);
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-  void _showAddDocumentDialog(BuildContext context, ProjectModel project) {
-    // Add document dialog implementation
-    // Not implementing in this cleanup
+    showDialog(
+      context: context,
+      barrierDismissible: false, // User must choose an option
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Project'),
+        content: Text(
+          'Are you sure you want to delete "${project.title}"?\n\n'
+          'This action cannot be undone and all project data will be permanently lost.',
+          style: const TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              // Close the dialog first
+              Navigator.pop(context);
+
+              // Store values we need before navigating
+              final String projectId = project.id;
+              final String? userId = authProvider.user?.id;
+
+              // First show the deleting indicator
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(width: 16),
+                        Text('Deleting project...'),
+                      ],
+                    ),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+              }
+
+              // IMPORTANT: Navigate back BEFORE deleting to avoid deactivated widget errors
+              if (mounted) {
+                // Pop the ProjectScreen to return to previous screen
+                Navigator.of(context).pop();
+              }
+
+              // Now delete the project after navigation
+              try {
+                await projectProvider.deleteProject(
+                  projectId,
+                  userId ?? '',
+                );
+
+                // We can't show additional feedback here as we've already navigated away
+              } catch (e) {
+                // We can't show error UI since we've already navigated away
+                print('Error deleting project: $e');
+              }
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
   }
 
   // Update the project's status (main and sub-status)
-  void _updateProjectStatus(
+  Future<void> _updateProjectStatus(
     BuildContext context,
     ProjectModel project,
     ProjectMainStatus newMainStatus,
     String newSubStatus,
+    {bool skipValidation = false}
   ) async {
     final projectProvider =
         Provider.of<ProjectProvider>(context, listen: false);
 
     try {
-      // First, update the main status if different
+      // When changing main status, check if the current main status has all steps completed
       if (project.mainStatus != newMainStatus) {
+        // Verify all substeps in the current main status are completed before moving on
+        final currentSubStatuses =
+            ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
+        bool allCurrentCompleted = true;
+
+        for (final subStatus in currentSubStatuses) {
+          if (!project.isSubStatusCompleted(subStatus['value']!)) {
+            allCurrentCompleted = false;
+            break;
+          }
+        }
+
+        // Don't allow moving to a new main status if current one has incomplete steps
+        // Skip this validation if skipValidation is true (for automatic advancement)
+        if (!skipValidation && !allCurrentCompleted &&
+            ProjectMainStatus.values.indexOf(newMainStatus) >
+                ProjectMainStatus.values.indexOf(project.mainStatus)) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'Cannot move to next main status until all current steps are completed.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
         await projectProvider.updateProjectMainStatus(
             project.id, newMainStatus, newSubStatus);
       } else {
-        // If main status is the same, just update the sub-status
+        // If main status is the same, make sure we're following the sequence
+        final subStatuses =
+            ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
+        final currentIndex =
+            subStatuses.indexWhere((s) => s['value'] == project.subStatus);
+        final newIndex =
+            subStatuses.indexWhere((s) => s['value'] == newSubStatus);
+
+        // Skip sequence validation if skipValidation is true
+        if (!skipValidation) {
+          // Only allow sequential or backward movement if all previous steps are completed
+          bool canMove = true;
+  
+          if (newIndex > currentIndex) {
+            // Moving forward - check if all previous substatus items are completed
+            for (int i = 0; i <= currentIndex; i++) {
+              if (!project.isSubStatusCompleted(subStatuses[i]['value']!)) {
+                canMove = false;
+                break;
+              }
+            }
+          }
+  
+          if (!canMove) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                      'Cannot move to this step until previous steps are completed.'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+            return;
+          }
+        }
+
+        // Update the sub-status
         await projectProvider.updateProjectSubStatus(
           project.id,
           newSubStatus,
@@ -437,7 +629,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
         );
       }
 
-      if (mounted) {
+      // Only show the generic update notification if not auto-advancing
+      if (mounted && !skipValidation) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Project status updated'),
@@ -468,11 +661,53 @@ class _ProjectScreenState extends State<ProjectScreen> {
         Provider.of<ProjectProvider>(context, listen: false);
 
     try {
+      // Can only mark as complete if the previous steps are completed
+      if (isComplete && !project.canCompleteSubStatus(subStatus)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Cannot mark this step as complete until previous steps are completed.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       DateTime? statusDate;
       if (isComplete) {
         // If marking as complete, set current date
         statusDate = DateTime.now();
       } else {
+        // If marking as incomplete, verify if this would create a gap in the sequence
+        final subStatuses =
+            ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
+        final currentIndex =
+            subStatuses.indexWhere((s) => s['value'] == subStatus);
+
+        // Check if there are any later steps that are already completed
+        bool hasCompletedLaterSteps = false;
+        for (int i = currentIndex + 1; i < subStatuses.length; i++) {
+          if (project.isSubStatusCompleted(subStatuses[i]['value']!)) {
+            hasCompletedLaterSteps = true;
+            break;
+          }
+        }
+
+        if (hasCompletedLaterSteps) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                    'Cannot mark this step as incomplete because later steps are already completed.'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
+        }
+
         // If marking as incomplete, set to null (will remove the date)
         statusDate = null;
       }
@@ -485,15 +720,103 @@ class _ProjectScreenState extends State<ProjectScreen> {
         subStatus: subStatus, // Specify which sub-status to update
       );
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(isComplete
-                ? 'Status marked as complete'
-                : 'Status marked as incomplete'),
-            backgroundColor: Colors.green,
-          ),
-        );
+      // If completed, automatically set the current status to this completed one
+      if (isComplete && project.subStatus != subStatus) {
+        await projectProvider.updateProjectSubStatus(
+            project.id,
+            subStatus, // Set as current substatus
+            DateTime.now());
+      }
+
+      // If this was the last step in the phase and it's now complete, automatically move to next phase
+      if (isComplete) {
+        final subStatuses =
+            ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
+        
+        // Check if we just completed the very last step in the phase
+        bool isLastStepInPhase = subStatus == subStatuses.last['value'];
+        
+        // Check if all other steps are completed too
+        bool allOtherStepsCompleted = true;
+        for (final ss in subStatuses) {
+          final String value = ss['value']!;
+          if (value != subStatus && !project.isSubStatusCompleted(value)) {
+            allOtherStepsCompleted = false;
+            break;
+          }
+        }
+        
+        // If we just completed the last step and all others are done, automatically advance to next phase
+        if (isLastStepInPhase && allOtherStepsCompleted && mounted) {
+          final int currentIndex =
+              ProjectMainStatus.values.indexOf(project.mainStatus);
+          
+          // Check if there's a next phase to move to
+          if (currentIndex < ProjectMainStatus.values.length - 1) {
+            final nextMainStatus = ProjectMainStatus.values[currentIndex + 1];
+            
+            // Get the first step of the next phase
+            final nextPhaseSubStatuses =
+                ProjectModel.getSubStatusesForMainStatus(nextMainStatus);
+            
+            if (nextPhaseSubStatuses.isNotEmpty) {
+              final String nextPhaseFirstStep = nextPhaseSubStatuses[0]['value']!;
+              
+              // Capture phase names before making any changes
+              final currentPhaseName = _getMainStatusName(project.mainStatus);
+              final nextPhaseName = _getMainStatusName(nextMainStatus);
+              
+              // Short delay to allow the current update to complete
+              Future.delayed(const Duration(milliseconds: 500), () async {
+                try {
+                  // Automatically advance to the next phase and its first step
+                  _updateProjectStatus(
+                    context,
+                    project,
+                    nextMainStatus,
+                    nextPhaseFirstStep,
+                    skipValidation: true, // Skip sequence validation since we're auto-advancing
+                  );
+                  
+                  // Show a notification about the automatic phase advancement
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          '$currentPhaseName phase completed! '
+                          'Advanced to $nextPhaseName phase.',
+                        ),
+                        backgroundColor: Colors.green,
+                        duration: const Duration(seconds: 3),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  // Handle errors from phase advancement
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error advancing to next phase: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              });
+            }
+          } else {
+            // This was the final phase
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: const Text('All project phases completed! 🎉'),
+                  backgroundColor: Colors.green,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -504,6 +827,21 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
         );
       }
+    }
+  }
+
+  String _getMainStatusName(ProjectMainStatus status) {
+    switch (status) {
+      case ProjectMainStatus.design:
+        return 'Design';
+      case ProjectMainStatus.paging:
+        return 'Paging';
+      case ProjectMainStatus.proofing:
+        return 'Proofing';
+      case ProjectMainStatus.epub:
+        return 'E-Pub';
+      case ProjectMainStatus.other:
+        return 'Other';
     }
   }
 }

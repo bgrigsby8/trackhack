@@ -6,7 +6,7 @@ import '../models/task_model.dart';
 
 class AppHelpers {
   // Date formatting helpers
-  static String formatDate(DateTime date, {String format = 'MMM d, yyyy'}) {
+  static String formatDate(DateTime date, {String format = 'MM/dd/yyyy'}) {
     return DateFormat(format).format(date);
   }
 

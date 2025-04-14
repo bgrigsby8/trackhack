@@ -92,6 +92,10 @@ class ProjectCard extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide.none,
+          ),
         ),
 
         // Deadline text

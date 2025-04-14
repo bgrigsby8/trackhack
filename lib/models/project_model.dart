@@ -187,6 +187,15 @@ class ProjectModel {
 
   String _getDesignStatusLabel() {
     switch (subStatus) {
+      case 'design_initial':
+        return 'Initial Design';
+      case 'design_review':
+        return 'Design Review';
+      case 'design_revisions':
+        return 'Design Revisions';
+      case 'design_final':
+        return 'Final Design';
+      // Legacy support
       case 'prForm':
         return 'PR Form';
       case 'designSample':
@@ -198,6 +207,15 @@ class ProjectModel {
 
   String _getPagingStatusLabel() {
     switch (subStatus) {
+      case 'paging_initial':
+        return 'Initial Paging';
+      case 'paging_review':
+        return 'Paging Review';
+      case 'paging_revisions':
+        return 'Paging Revisions';
+      case 'paging_final':
+        return 'Final Paging';
+      // Legacy support
       case 'settingCopy':
         return 'Setting Copy';
       case 'firstPass':
@@ -212,6 +230,23 @@ class ProjectModel {
   // Get more detailed label for Proofing sub-status
   String _getProofingStatusLabel() {
     switch (subStatus) {
+      case 'proofing_1p':
+        return '1P';
+      case 'proofing_1pcx':
+        return '1P CX';
+      case 'proofing_2p':
+        return '2P';
+      case 'proofing_2pcx':
+        return '2P CX';
+      case 'proofing_3p':
+        return '3P';
+      case 'proofing_3pcx':
+        return '3P CX';
+      case 'proofing_4p':
+        return '4P';
+      case 'proofing_approved':
+        return 'Approved For Press';
+      // Legacy support
       case 'firstPass':
         return '1P';
       case 'firstPassCX':
@@ -235,18 +270,66 @@ class ProjectModel {
 
   String _getEPubStatusLabel() {
     switch (subStatus) {
+      case 'epub_sent':
+        return 'WO Sent';
+      case 'epub_dad':
+        return 'Sent to DAD';
+      // Legacy support
       case 'sentEPub':
         return 'WO Sent';
       case 'sentDAD':
         return 'Sent to DAD';
       default:
-        return 'Other';
+        return 'E-Pub';
     }
   }
 
   // Get the date for a specific sub-status
   DateTime? getDateForSubStatus(String subStatus) {
     return statusDates[subStatus];
+  }
+
+  // Check if a substatus is completed (has a date)
+  bool isSubStatusCompleted(String subStatus) {
+    return statusDates.containsKey(subStatus);
+  }
+
+  // Check if a substatus can be marked as complete
+  // (either it's the first one or previous ones are completed)
+  bool canCompleteSubStatus(String subStatus) {
+    // Get list of all substatus values for the current main status
+    final List<Map<String, String>> subStatuses =
+        getSubStatusesForMainStatus(mainStatus);
+
+    // If it's the first substatus, it can always be completed
+    if (subStatuses.isNotEmpty && subStatuses[0]['value'] == subStatus) {
+      return true;
+    }
+
+    // Find the index of the current substatus
+    final currentIndex = subStatuses.indexWhere((s) => s['value'] == subStatus);
+    if (currentIndex > 0) {
+      // Check if the previous substatus is completed
+      final previousSubStatus = subStatuses[currentIndex - 1]['value'];
+      return isSubStatusCompleted(previousSubStatus!);
+    }
+
+    return false;
+  }
+
+  // Get the next incomplete substatus for the current main status
+  String? getNextIncompleteSubStatus() {
+    final List<Map<String, String>> subStatuses =
+        getSubStatusesForMainStatus(mainStatus);
+
+    for (final subStatus in subStatuses) {
+      final value = subStatus['value']!;
+      if (!isSubStatusCompleted(value)) {
+        return value;
+      }
+    }
+
+    return null;
   }
 
   // Get the main category color
@@ -268,49 +351,49 @@ class ProjectModel {
   // Get design sub-statuses
   static List<Map<String, String>> get designSubStatuses {
     return [
-      {'value': 'initial', 'label': 'Initial Design'},
-      {'value': 'review', 'label': 'Design Review'},
-      {'value': 'revisions', 'label': 'Design Revisions'},
-      {'value': 'finalDesign', 'label': 'Final Design'},
+      {'value': 'design_initial', 'label': 'Initial Design'},
+      {'value': 'design_review', 'label': 'Design Review'},
+      {'value': 'design_revisions', 'label': 'Design Revisions'},
+      {'value': 'design_final', 'label': 'Final Design'},
     ];
   }
 
   // Get paging sub-statuses
   static List<Map<String, String>> get pagingSubStatuses {
     return [
-      {'value': 'initial', 'label': 'Initial Paging'},
-      {'value': 'review', 'label': 'Paging Review'},
-      {'value': 'revisions', 'label': 'Paging Revisions'},
-      {'value': 'finalDesign', 'label': 'Final Paging'},
+      {'value': 'paging_initial', 'label': 'Initial Paging'},
+      {'value': 'paging_review', 'label': 'Paging Review'},
+      {'value': 'paging_revisions', 'label': 'Paging Revisions'},
+      {'value': 'paging_final', 'label': 'Final Paging'},
     ];
   }
 
   // Get all proofing sub-statuses for display
   static List<Map<String, String>> get proofingSubStatuses {
     return [
-      {'value': 'firstPass', 'label': '1P'},
-      {'value': 'firstPassCX', 'label': '1P CX'},
-      {'value': 'secondPass', 'label': '2P'},
-      {'value': 'secondPassCX', 'label': '2P CX'},
-      {'value': 'thirdPass', 'label': '3P'},
-      {'value': 'thirdPassCX', 'label': '3P CX'},
-      {'value': 'fourthPass', 'label': '4P'},
-      {'value': 'approvedForPress', 'label': 'Approved For Press'},
+      {'value': 'proofing_1p', 'label': '1P'},
+      {'value': 'proofing_1pcx', 'label': '1P CX'},
+      {'value': 'proofing_2p', 'label': '2P'},
+      {'value': 'proofing_2pcx', 'label': '2P CX'},
+      {'value': 'proofing_3p', 'label': '3P'},
+      {'value': 'proofing_3pcx', 'label': '3P CX'},
+      {'value': 'proofing_4p', 'label': '4P'},
+      {'value': 'proofing_approved', 'label': 'Approved For Press'},
     ];
   }
 
   // Get all ePub sub-statuses for display
   static List<Map<String, String>> get epubSubStatuses {
     return [
-      {'value': 'sentEPub', 'label': 'WO Sent'},
-      {'value': 'sentDAD', 'label': 'Sent to DAD'},
+      {'value': 'epub_sent', 'label': 'WO Sent'},
+      {'value': 'epub_dad', 'label': 'Sent to DAD'},
     ];
   }
 
   // Get other sub-statuses
   static List<Map<String, String>> get otherSubStatuses {
     return [
-      {'value': 'notTransmitted', 'label': 'Not Transmitted'},
+      {'value': 'other_nottransmitted', 'label': 'Not Transmitted'},
     ];
   }
 
