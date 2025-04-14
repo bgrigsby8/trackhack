@@ -521,9 +521,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     // Overdue projects list
-                    ...overdueProjects.map((project) => 
-                      _buildProjectCard(context, project, isOverdue: true)
-                    ),
+                    ...overdueProjects.map((project) =>
+                        _buildProjectCard(context, project, isOverdue: true)),
                     // Add a divider if both sections are present
                     if (upcomingProjects.isNotEmpty)
                       const Divider(height: 24, thickness: 1),
@@ -540,8 +539,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.schedule,
-                              color: Colors.grey, size: 12),
+                          Icon(Icons.schedule, color: Colors.grey, size: 12),
                           SizedBox(width: 4),
                           Text(
                             'Upcoming',
@@ -555,9 +553,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     // Upcoming projects list
-                    ...upcomingProjects.map((project) => 
-                      _buildProjectCard(context, project)
-                    ),
+                    ...upcomingProjects
+                        .map((project) => _buildProjectCard(context, project)),
                   ],
                 ],
               ),
@@ -1004,7 +1001,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       // Validate phase transitions
       DateTime? lastDesignDate;
-      if (errors.isNotEmpty) return errors; // Return if there are already errors
+      if (errors.isNotEmpty)
+        return errors; // Return if there are already errors
 
       // Get last date of each phase
       if (ProjectModel.designSubStatuses.isNotEmpty) {
@@ -1073,6 +1071,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           title: const Text('Create New Book Project'),
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.7,
