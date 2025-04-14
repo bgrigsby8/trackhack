@@ -376,9 +376,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<ProjectModel> upcomingProjects = [];
 
     for (final project in projects) {
-      // If the project is already in the EPUB phase, we don't mark it as overdue
-      // since it's nearing completion anyway
-      if (project.deadline.isBefore(now) &&
+      // Get the due date for the current step
+      final currentStepDueDate = _getStepDueDate(project);
+
+      // Mark as overdue if the step due date is before today
+      // Exception: don't mark as overdue if project is in EPUB phase or is completed
+      if (currentStepDueDate != null &&
+          currentStepDueDate.isBefore(now) &&
+          !project.isCompleted &&
           project.mainStatus != ProjectMainStatus.epub) {
         overdueProjects.add(project);
       } else {
@@ -468,277 +473,93 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
-          // Show counts for Overdue and Upcoming
-          if (projects.isNotEmpty)
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
-              child: Row(
-                children: [
-                  if (overdueProjects.isNotEmpty)
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                                color: Colors.red.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.warning_amber,
-                                  color: Colors.red, size: 12),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${overdueProjects.length} overdue',
-                                style: const TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.normal,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-
           // Project cards
           if (projects.isEmpty)
-            DragTarget<ProjectModel>(
-              onAcceptWithDetails: (data) =>
-                  _handleProjectDrop(data as ProjectModel, title),
-              builder: (context, candidateData, rejectedData) {
-                return Container(
-                  height: 150,
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    color: candidateData.isNotEmpty
-                        ? columnColor.withValues(alpha: 0.1)
-                        : null,
-                    borderRadius: BorderRadius.circular(8.0),
+            Container(
+              height: 150,
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: Center(
+                child: Text(
+                  'No projects in $title',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey,
                   ),
-                  child: Center(
-                    child: Text(
-                      candidateData.isNotEmpty
-                          ? 'Drop here to move to $title'
-                          : 'No projects in $title',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: candidateData.isNotEmpty
-                            ? columnColor
-                            : Colors.grey,
-                      ),
-                    ),
-                  ),
-                );
-              },
+                ),
+              ),
             )
           else
             Expanded(
-              child: DragTarget<ProjectModel>(
-                onAcceptWithDetails: (data) =>
-                    _handleProjectDrop(data as ProjectModel, title),
-                builder: (context, candidateData, rejectedData) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: candidateData.isNotEmpty
-                          ? columnColor.withValues(alpha: 0.1)
-                          : null,
-                      borderRadius: const BorderRadius.only(
-                        bottomLeft: Radius.circular(8.0),
-                        bottomRight: Radius.circular(8.0),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+                children: [
+                  // OVERDUE SECTION
+                  if (overdueProjects.isNotEmpty) ...[
+                    // Overdue header
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 8, top: 4),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 4, horizontal: 8),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.warning_amber,
+                              color: Colors.red, size: 12),
+                          SizedBox(width: 4),
+                          Text(
+                            'Overdue',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: Column(
-                      children: [
-                        // OVERDUE SECTION
-                        if (overdueProjects.isNotEmpty)
-                          Expanded(
-                            flex: overdueProjects.length,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Overdue header
-                                Container(
-                                  width: double.infinity,
-                                  margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 4, horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                        color:
-                                            Colors.red.withValues(alpha: 0.3)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.warning_amber,
-                                          color: Colors.red, size: 16),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Overdue',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.red,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Overdue projects list
-                                Expanded(
-                                  child: ListView.builder(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                                    itemCount: overdueProjects.length,
-                                    itemBuilder: (context, index) {
-                                      final project = overdueProjects[index];
-                                      return LongPressDraggable<ProjectModel>(
-                                        data: project,
-                                        delay:
-                                            const Duration(milliseconds: 500),
-                                        feedback: Material(
-                                          elevation: 4.0,
-                                          child: Container(
-                                            width: MediaQuery.of(context)
-                                                    .size
-                                                    .width *
-                                                0.2,
-                                            padding: const EdgeInsets.all(16.0),
-                                            decoration: BoxDecoration(
-                                              color: theme.cardColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                            child: Text(
-                                              project.title,
-                                              style:
-                                                  theme.textTheme.titleMedium,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ),
-                                        childWhenDragging: Opacity(
-                                          opacity: 0.3,
-                                          child: _buildProjectCard(
-                                              context, project,
-                                              isOverdue: true),
-                                        ),
-                                        child: _buildProjectCard(
-                                            context, project,
-                                            isOverdue: true),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                        // Divider between sections
-                        if (overdueProjects.isNotEmpty &&
-                            upcomingProjects.isNotEmpty)
-                          const Divider(height: 1),
-
-                        // UPCOMING SECTION
-                        if (upcomingProjects.isNotEmpty)
-                          Expanded(
-                            flex: upcomingProjects.length,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Upcoming header
-                                Container(
-                                  width: double.infinity,
-                                  margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 4, horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blue.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                        color:
-                                            Colors.blue.withValues(alpha: 0.3)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.schedule,
-                                          color: Colors.blue, size: 16),
-                                      SizedBox(width: 4),
-                                      Text(
-                                        'Upcoming',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Upcoming projects list
-                                Expanded(
-                                  child: ListView.builder(
-                                    padding:
-                                        const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                                    itemCount: upcomingProjects.length,
-                                    itemBuilder: (context, index) {
-                                      final project = upcomingProjects[index];
-                                      return LongPressDraggable<ProjectModel>(
-                                        data: project,
-                                        delay:
-                                            const Duration(milliseconds: 500),
-                                        feedback: Material(
-                                          elevation: 4.0,
-                                          child: Container(
-                                            width: MediaQuery.of(context)
-                                                    .size
-                                                    .width *
-                                                0.2,
-                                            padding: const EdgeInsets.all(16.0),
-                                            decoration: BoxDecoration(
-                                              color: theme.cardColor,
-                                              borderRadius:
-                                                  BorderRadius.circular(8.0),
-                                            ),
-                                            child: Text(
-                                              project.title,
-                                              style:
-                                                  theme.textTheme.titleMedium,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        ),
-                                        childWhenDragging: Opacity(
-                                          opacity: 0.3,
-                                          child: _buildProjectCard(
-                                              context, project),
-                                        ),
-                                        child:
-                                            _buildProjectCard(context, project),
-                                      );
-                                    },
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                      ],
+                    // Overdue projects list
+                    ...overdueProjects.map((project) => 
+                      _buildProjectCard(context, project, isOverdue: true)
                     ),
-                  );
-                },
+                    // Add a divider if both sections are present
+                    if (upcomingProjects.isNotEmpty)
+                      const Divider(height: 24, thickness: 1),
+                  ],
+
+                  // UPCOMING SECTION
+                  if (upcomingProjects.isNotEmpty) ...[
+                    // Upcoming header
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 8, top: 4),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 4, horizontal: 8),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.schedule,
+                              color: Colors.grey, size: 12),
+                          SizedBox(width: 4),
+                          Text(
+                            'Upcoming',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Upcoming projects list
+                    ...upcomingProjects.map((project) => 
+                      _buildProjectCard(context, project)
+                    ),
+                  ],
+                ],
               ),
             ),
         ],
@@ -750,16 +571,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
       {bool isOverdue = false}) {
     final theme = Theme.of(context);
 
-    // Calculate days overdue for project deadline
-    final now = DateTime.now();
-    final daysOverdue = isOverdue ? now.difference(project.deadline).inDays : 0;
-
     // Get current step label instead of general status
     final currentStepLabel = _getCurrentStepLabel(project);
 
     // Calculate the due date for the current step (not the overall project deadline)
     final currentStepDueDate = _getStepDueDate(project);
-    print("Current step due date: $currentStepDueDate");
+
+    final now = DateTime.now();
 
     // Check if the current step is overdue
     final isStepOverdue = currentStepDueDate != null &&
@@ -767,7 +585,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         !project.isCompleted;
 
     // Calculate days overdue for current step
-    final stepDaysOverdue =
+    final daysOverdue =
         isStepOverdue ? now.difference(currentStepDueDate).inDays : 0;
 
     return Card(
@@ -909,10 +727,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               : FontWeight.normal,
                         ),
                       ),
-                      if (isStepOverdue)
-                        if (stepDaysOverdue > 0)
+                      if (isStepOverdue || isOverdue)
+                        if (daysOverdue > 0)
                           Text(
-                            'Overdue by $stepDaysOverdue days',
+                            'Overdue by $daysOverdue days',
                             style: const TextStyle(
                               fontSize: 11,
                               color: Colors.red,
@@ -927,16 +745,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               color: Colors.red,
                               fontWeight: FontWeight.normal,
                             ),
-                          )
-                      else if (isOverdue)
-                        Text(
-                          'Project overdue by $daysOverdue days',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.red,
-                            fontWeight: FontWeight.normal,
                           ),
-                        ),
                     ],
                   ),
                 ],
@@ -1023,60 +832,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Fallback to project deadline if no other date is available
     return project.deadline;
-  }
-
-  void _handleProjectDrop(ProjectModel project, String columnTitle) async {
-    final projectProvider =
-        Provider.of<ProjectProvider>(context, listen: false);
-
-    // Based on the column, determine the new main status and default sub-status
-    ProjectMainStatus? newMainStatus;
-    String defaultSubStatus = '';
-
-    switch (columnTitle) {
-      case 'Design':
-        newMainStatus = ProjectMainStatus.design;
-        defaultSubStatus = 'initial'; // Using the first sub-status for design
-        break;
-      case 'Paging':
-        newMainStatus = ProjectMainStatus.paging;
-        defaultSubStatus = 'initial'; // Using the first sub-status for paging
-        break;
-      case 'Proofing':
-        newMainStatus = ProjectMainStatus.proofing;
-        defaultSubStatus =
-            'firstPass'; // Using the first proofing sub-status (1P)
-        break;
-      case 'EPUB':
-        newMainStatus = ProjectMainStatus.epub;
-        defaultSubStatus = 'initial'; // Default sub-status for EPUB
-        break;
-    }
-
-    if (newMainStatus != null && newMainStatus != project.mainStatus) {
-      try {
-        await projectProvider.updateProjectMainStatus(
-            project.id, newMainStatus, defaultSubStatus);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Moved "${project.title}" to $columnTitle'),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error updating project: $e'),
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-          );
-        }
-      }
-    }
   }
 
   Color _getColumnHeaderColor(String columnTitle) {
@@ -1249,7 +1004,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       // Validate phase transitions
       DateTime? lastDesignDate;
-      if (!errors.isEmpty) return errors; // Return if there are already errors
+      if (errors.isNotEmpty) return errors; // Return if there are already errors
 
       // Get last date of each phase
       if (ProjectModel.designSubStatuses.isNotEmpty) {
