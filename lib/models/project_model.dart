@@ -52,6 +52,7 @@ class ProjectModel {
   final String id;
   final String title;
   final String description;
+  final String isbn; // ISBN number for the book
   final ProjectMainStatus mainStatus;
   final String subStatus; // Store as string to handle different enum types
   final Map<String, DateTime> statusDates; // Store dates for each sub-status
@@ -65,6 +66,7 @@ class ProjectModel {
     required this.id,
     required this.title,
     required this.description,
+    required this.isbn,
     required this.mainStatus,
     required this.subStatus,
     Map<String, DateTime>? statusDates,
@@ -86,6 +88,7 @@ class ProjectModel {
       'id': id,
       'title': title,
       'description': description,
+      'isbn': isbn,
       'mainStatus': mainStatus.index,
       'subStatus': subStatus,
       'statusDates': dateMap,
@@ -110,6 +113,7 @@ class ProjectModel {
       id: map['id'] as String,
       title: map['title'] as String,
       description: map['description'] as String,
+      isbn: map['isbn'] as String? ?? '',
       mainStatus: ProjectMainStatus.values[map['mainStatus'] as int],
       subStatus: map['subStatus'] as String? ?? '',
       statusDates: dateMap,
@@ -145,6 +149,7 @@ class ProjectModel {
     String? id,
     String? title,
     String? description,
+    String? isbn,
     ProjectMainStatus? mainStatus,
     String? subStatus,
     Map<String, DateTime>? statusDates,
@@ -158,6 +163,7 @@ class ProjectModel {
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
+      isbn: isbn ?? this.isbn,
       mainStatus: mainStatus ?? this.mainStatus,
       subStatus: subStatus ?? this.subStatus,
       statusDates: statusDates ?? Map.from(this.statusDates),

@@ -161,18 +161,37 @@ class _ProjectScreenState extends State<ProjectScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          // Project deadline
+          // Project details - deadline and ISBN
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(
-                Icons.calendar_today,
-                size: 16,
-                color: Colors.grey,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Deadline: ${_formatDate(project.deadline)}',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Text(
-                'Deadline: ${_formatDate(project.deadline)}',
-                style: const TextStyle(color: Colors.grey),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.book,
+                    size: 16,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'ISBN: ${project.isbn}',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ],
               ),
             ],
           ),
@@ -453,8 +472,146 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   void _showEditProjectDialog(BuildContext context, ProjectModel project) {
-    // Edit project dialog implementation
-    // Not implementing in this cleanup
+    final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
+    final titleController = TextEditingController(text: project.title);
+    final descriptionController = TextEditingController(text: project.description);
+    final isbnController = TextEditingController(text: project.isbn);
+    final deadlineController = TextEditingController(
+      text: _formatDate(project.deadline),
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Project'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Title',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: titleController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter book title',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'ISBN',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: isbnController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter ISBN number',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Description',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: descriptionController,
+                decoration: const InputDecoration(
+                  hintText: 'Enter book description',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Deadline',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              TextField(
+                controller: deadlineController,
+                decoration: const InputDecoration(
+                  hintText: 'MM/DD/YYYY',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (titleController.text.isEmpty || 
+                  descriptionController.text.isEmpty ||
+                  isbnController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please fill in all required fields'),
+                  ),
+                );
+                return;
+              }
+
+              // Parse deadline
+              final dateParts = deadlineController.text.split('/');
+              if (dateParts.length != 3) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Invalid date format. Use MM/DD/YYYY'),
+                  ),
+                );
+                return;
+              }
+
+              try {
+                final month = int.parse(dateParts[0]);
+                final day = int.parse(dateParts[1]);
+                final year = int.parse(dateParts[2]);
+                final deadline = DateTime(year, month, day);
+
+                // Update project
+                final updatedProject = project.copyWith(
+                  title: titleController.text,
+                  description: descriptionController.text,
+                  isbn: isbnController.text,
+                  deadline: deadline,
+                  updatedAt: DateTime.now(),
+                );
+
+                Navigator.pop(context);
+
+                await projectProvider.updateProject(updatedProject);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Project updated successfully'),
+                    ),
+                  );
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: $e'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showDeleteProjectDialog(BuildContext context, ProjectModel project) {

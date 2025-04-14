@@ -75,6 +75,7 @@ class ProjectService {
                 data['title'] != null &&
                 data['description'] != null &&
                 data['ownerId'] != null) {
+              // ISBN may be missing in older records
               projects.add(ProjectModel.fromMap(data));
             }
           } catch (e) {

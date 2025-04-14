@@ -163,6 +163,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildProjectsGrid(
       BuildContext context, ProjectProvider projectProvider) {
     final filteredProjects = _filterProjects(projectProvider.projects);
+    print("Filtered projects: $filteredProjects");
+    print("Search query: $_searchQuery");
 
     if (filteredProjects.isEmpty) {
       return Center(
@@ -432,6 +434,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
+              const SizedBox(height: 4),
+              // Display ISBN
+              Row(
+                children: [
+                  const Icon(
+                    Icons.book,
+                    size: 12,
+                    color: Colors.grey,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'ISBN: ${project.isbn}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -554,7 +575,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
           project.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           project.description
               .toLowerCase()
-              .contains(_searchQuery.toLowerCase());
+              .contains(_searchQuery.toLowerCase()) ||
+          project.isbn.contains(_searchQuery);
     }).toList();
   }
 
@@ -596,6 +618,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Provider.of<ProjectProvider>(context, listen: false);
 
     final titleController = TextEditingController();
+    final isbnController = TextEditingController();
     final descriptionController = TextEditingController();
     final deadlineController = TextEditingController(
       text: _formatDate(
@@ -692,6 +715,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     controller: titleController,
                     decoration: const InputDecoration(
                       hintText: 'Enter book title',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'ISBN',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: isbnController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter ISBN number',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -989,10 +1025,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ElevatedButton(
               onPressed: () async {
                 if (titleController.text.isEmpty ||
-                    descriptionController.text.isEmpty) {
+                    descriptionController.text.isEmpty ||
+                    isbnController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Please fill in all fields'),
+                      content: Text('Please fill in all required fields'),
                     ),
                   );
                   return;
@@ -1084,6 +1121,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   id: '', // Will be set by the service
                   title: titleController.text,
                   description: descriptionController.text,
+                  isbn: isbnController.text,
                   mainStatus:
                       ProjectMainStatus.design, // Always start at design phase
                   subStatus: ProjectModel.designSubStatuses.isNotEmpty

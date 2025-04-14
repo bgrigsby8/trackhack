@@ -268,7 +268,8 @@ class ProjectProvider with ChangeNotifier {
     final lowercaseQuery = query.toLowerCase();
     return _projects.where((project) {
       return project.title.toLowerCase().contains(lowercaseQuery) ||
-          project.description.toLowerCase().contains(lowercaseQuery);
+          project.description.toLowerCase().contains(lowercaseQuery) ||
+          project.isbn.toLowerCase().contains(lowercaseQuery);
     }).toList();
   }
 
