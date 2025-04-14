@@ -24,7 +24,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'Proofing': true,
     'EPUB': true, // Added EPUB column
   };
-  
+
   // State for completed books section
   bool _showCompletedBooks = false;
 
@@ -98,7 +98,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             )
           else if (projectProvider.projects.isEmpty)
             _buildEmptyProjectsView(context)
-          else 
+          else
             Expanded(
               child: Column(
                 children: [
@@ -137,10 +137,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-  
-  Widget _buildCompletedBooksSection(BuildContext context, ProjectProvider projectProvider) {
+
+  Widget _buildCompletedBooksSection(
+      BuildContext context, ProjectProvider projectProvider) {
     final completedProjects = projectProvider.getCompletedProjects();
-    
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       decoration: BoxDecoration(
@@ -152,14 +153,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           // Header with expand/collapse button
           InkWell(
-            onTap: () => setState(() => _showCompletedBooks = !_showCompletedBooks),
+            onTap: () =>
+                setState(() => _showCompletedBooks = !_showCompletedBooks),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
                   Icon(
-                    _showCompletedBooks 
-                        ? Icons.keyboard_arrow_down 
+                    _showCompletedBooks
+                        ? Icons.keyboard_arrow_down
                         : Icons.keyboard_arrow_right,
                     color: Colors.green,
                   ),
@@ -173,9 +175,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.2),
+                      color: Colors.green.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
@@ -190,64 +193,68 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          
+
           // Expanded content when showCompletedBooks is true
           if (_showCompletedBooks)
             completedProjects.isEmpty
-              ? Container(
-                  padding: const EdgeInsets.all(16),
-                  alignment: Alignment.center,
-                  child: Column(
-                    children: [
-                      const Icon(
-                        Icons.local_library,
-                        size: 48,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'No completed books yet',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontStyle: FontStyle.italic,
+                ? Container(
+                    padding: const EdgeInsets.all(16),
+                    alignment: Alignment.center,
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.local_library,
+                          size: 48,
+                          color: Colors.grey,
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Books will appear here when all steps in the EPUB phase are completed',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
+                        const SizedBox(height: 8),
+                        Text(
+                          'No completed books yet',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontStyle: FontStyle.italic,
+                          ),
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Books will appear here when all steps in the EPUB phase are completed',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  )
+                : ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: completedProjects.length,
+                    itemBuilder: (context, index) {
+                      final project = completedProjects[index];
+                      return ListTile(
+                        title: Text(project.title),
+                        subtitle: Row(
+                          children: [
+                            const Icon(Icons.book,
+                                size: 14, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text('ISBN: ${project.isbn}'),
+                            const SizedBox(width: 16),
+                            const Icon(Icons.calendar_today,
+                                size: 14, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(
+                                'Completed: ${_formatDate(project.completedAt!)}'),
+                          ],
+                        ),
+                        trailing:
+                            const Icon(Icons.check_circle, color: Colors.green),
+                        onTap: () => _navigateToProject(context, project),
+                      );
+                    },
                   ),
-                )
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: completedProjects.length,
-                  itemBuilder: (context, index) {
-                    final project = completedProjects[index];
-                    return ListTile(
-                      title: Text(project.title),
-                      subtitle: Row(
-                        children: [
-                          const Icon(Icons.book, size: 14, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text('ISBN: ${project.isbn}'),
-                          const SizedBox(width: 16),
-                          const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text('Completed: ${_formatDate(project.completedAt!)}'),
-                        ],
-                      ),
-                      trailing: const Icon(Icons.check_circle, color: Colors.green),
-                      onTap: () => _navigateToProject(context, project),
-                    );
-                  },
-                ),
         ],
       ),
     );
@@ -318,8 +325,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Group projects by the main Kanban categories and sort according to column's setting
     // Exclude completed projects from the main columns
-    final incompleteProjects = filteredProjects.where((p) => !p.isCompleted).toList();
-    
+    final incompleteProjects =
+        filteredProjects.where((p) => !p.isCompleted).toList();
+
     final Map<String, List<ProjectModel>> kanbanColumns = {
       'Design': _getSortedProjects(
           incompleteProjects
@@ -360,6 +368,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildKanbanColumn(
       BuildContext context, String title, List<ProjectModel> projects) {
     final theme = Theme.of(context);
+    final columnColor = _getColumnHeaderColor(title);
+
+    // Separate projects into Overdue and Upcoming
+    final now = DateTime.now();
+    final List<ProjectModel> overdueProjects = [];
+    final List<ProjectModel> upcomingProjects = [];
+
+    for (final project in projects) {
+      // If the project is already in the EPUB phase, we don't mark it as overdue
+      // since it's nearing completion anyway
+      if (project.deadline.isBefore(now) &&
+          project.mainStatus != ProjectMainStatus.epub) {
+        overdueProjects.add(project);
+      } else {
+        upcomingProjects.add(project);
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.all(8.0),
@@ -382,7 +407,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Container(
             padding: const EdgeInsets.all(12.0),
             decoration: BoxDecoration(
-              color: _getColumnHeaderColor(title).withValues(alpha: 0.2),
+              color: columnColor.withValues(alpha: 0.2),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(8.0),
                 topRight: Radius.circular(8.0),
@@ -397,7 +422,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       title,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: _getColumnHeaderColor(title),
+                        color: columnColor,
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -418,7 +443,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               ? Icons.arrow_downward
                               : Icons.arrow_upward,
                           size: 16,
-                          color: _getColumnHeaderColor(title),
+                          color: columnColor,
                         ),
                       ),
                     ),
@@ -428,7 +453,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _getColumnHeaderColor(title),
+                    color: columnColor,
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -443,6 +468,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
 
+          // Show counts for Overdue and Upcoming
+          if (projects.isNotEmpty)
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4.0),
+              child: Row(
+                children: [
+                  if (overdueProjects.isNotEmpty)
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                                color: Colors.red.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.warning_amber,
+                                  color: Colors.red, size: 12),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${overdueProjects.length} overdue',
+                                style: const TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+
           // Project cards
           if (projects.isEmpty)
             DragTarget<ProjectModel>(
@@ -454,7 +522,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding: const EdgeInsets.all(16.0),
                   decoration: BoxDecoration(
                     color: candidateData.isNotEmpty
-                        ? _getColumnHeaderColor(title).withValues(alpha: 0.1)
+                        ? columnColor.withValues(alpha: 0.1)
                         : null,
                     borderRadius: BorderRadius.circular(8.0),
                   ),
@@ -465,7 +533,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           : 'No projects in $title',
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: candidateData.isNotEmpty
-                            ? _getColumnHeaderColor(title)
+                            ? columnColor
                             : Colors.grey,
                       ),
                     ),
@@ -482,45 +550,192 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return Container(
                     decoration: BoxDecoration(
                       color: candidateData.isNotEmpty
-                          ? _getColumnHeaderColor(title).withValues(alpha: 0.1)
+                          ? columnColor.withValues(alpha: 0.1)
                           : null,
                       borderRadius: const BorderRadius.only(
                         bottomLeft: Radius.circular(8.0),
                         bottomRight: Radius.circular(8.0),
                       ),
                     ),
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(8.0),
-                      itemCount: projects.length,
-                      itemBuilder: (context, index) {
-                        final project = projects[index];
-                        return LongPressDraggable<ProjectModel>(
-                          data: project,
-                          delay: const Duration(milliseconds: 500),
-                          feedback: Material(
-                            elevation: 4.0,
-                            child: Container(
-                              width: MediaQuery.of(context).size.width * 0.2,
-                              padding: const EdgeInsets.all(16.0),
-                              decoration: BoxDecoration(
-                                color: theme.cardColor,
-                                borderRadius: BorderRadius.circular(8.0),
-                              ),
-                              child: Text(
-                                project.title,
-                                style: theme.textTheme.titleMedium,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                    child: Column(
+                      children: [
+                        // OVERDUE SECTION
+                        if (overdueProjects.isNotEmpty)
+                          Expanded(
+                            flex: overdueProjects.length,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Overdue header
+                                Container(
+                                  width: double.infinity,
+                                  margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 4, horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                        color:
+                                            Colors.red.withValues(alpha: 0.3)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.warning_amber,
+                                          color: Colors.red, size: 16),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Overdue',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.red,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Overdue projects list
+                                Expanded(
+                                  child: ListView.builder(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                    itemCount: overdueProjects.length,
+                                    itemBuilder: (context, index) {
+                                      final project = overdueProjects[index];
+                                      return LongPressDraggable<ProjectModel>(
+                                        data: project,
+                                        delay:
+                                            const Duration(milliseconds: 500),
+                                        feedback: Material(
+                                          elevation: 4.0,
+                                          child: Container(
+                                            width: MediaQuery.of(context)
+                                                    .size
+                                                    .width *
+                                                0.2,
+                                            padding: const EdgeInsets.all(16.0),
+                                            decoration: BoxDecoration(
+                                              color: theme.cardColor,
+                                              borderRadius:
+                                                  BorderRadius.circular(8.0),
+                                            ),
+                                            child: Text(
+                                              project.title,
+                                              style:
+                                                  theme.textTheme.titleMedium,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                        childWhenDragging: Opacity(
+                                          opacity: 0.3,
+                                          child: _buildProjectCard(
+                                              context, project,
+                                              isOverdue: true),
+                                        ),
+                                        child: _buildProjectCard(
+                                            context, project,
+                                            isOverdue: true),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          childWhenDragging: Opacity(
-                            opacity: 0.3,
-                            child: _buildProjectCard(context, project),
+
+                        // Divider between sections
+                        if (overdueProjects.isNotEmpty &&
+                            upcomingProjects.isNotEmpty)
+                          const Divider(height: 1),
+
+                        // UPCOMING SECTION
+                        if (upcomingProjects.isNotEmpty)
+                          Expanded(
+                            flex: upcomingProjects.length,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Upcoming header
+                                Container(
+                                  width: double.infinity,
+                                  margin: const EdgeInsets.fromLTRB(8, 8, 8, 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 4, horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: Border.all(
+                                        color:
+                                            Colors.blue.withValues(alpha: 0.3)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.schedule,
+                                          color: Colors.blue, size: 16),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Upcoming',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                // Upcoming projects list
+                                Expanded(
+                                  child: ListView.builder(
+                                    padding:
+                                        const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                    itemCount: upcomingProjects.length,
+                                    itemBuilder: (context, index) {
+                                      final project = upcomingProjects[index];
+                                      return LongPressDraggable<ProjectModel>(
+                                        data: project,
+                                        delay:
+                                            const Duration(milliseconds: 500),
+                                        feedback: Material(
+                                          elevation: 4.0,
+                                          child: Container(
+                                            width: MediaQuery.of(context)
+                                                    .size
+                                                    .width *
+                                                0.2,
+                                            padding: const EdgeInsets.all(16.0),
+                                            decoration: BoxDecoration(
+                                              color: theme.cardColor,
+                                              borderRadius:
+                                                  BorderRadius.circular(8.0),
+                                            ),
+                                            child: Text(
+                                              project.title,
+                                              style:
+                                                  theme.textTheme.titleMedium,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ),
+                                        childWhenDragging: Opacity(
+                                          opacity: 0.3,
+                                          child: _buildProjectCard(
+                                              context, project),
+                                        ),
+                                        child:
+                                            _buildProjectCard(context, project),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: _buildProjectCard(context, project),
-                        );
-                      },
+                      ],
                     ),
                   );
                 },
@@ -531,11 +746,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildProjectCard(BuildContext context, ProjectModel project) {
+  Widget _buildProjectCard(BuildContext context, ProjectModel project,
+      {bool isOverdue = false}) {
     final theme = Theme.of(context);
+
+    // Calculate days overdue for project deadline
+    final now = DateTime.now();
+    final daysOverdue = isOverdue ? now.difference(project.deadline).inDays : 0;
+
+    // Get current step label instead of general status
+    final currentStepLabel = _getCurrentStepLabel(project);
+
+    // Calculate the due date for the current step (not the overall project deadline)
+    final currentStepDueDate = _getStepDueDate(project);
+    print("Current step due date: $currentStepDueDate");
+
+    // Check if the current step is overdue
+    final isStepOverdue = currentStepDueDate != null &&
+        currentStepDueDate.isBefore(now) &&
+        !project.isCompleted;
+
+    // Calculate days overdue for current step
+    final stepDaysOverdue =
+        isStepOverdue ? now.difference(currentStepDueDate).inDays : 0;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8.0),
+      elevation: (isOverdue || isStepOverdue) ? 2 : 1,
+      shape: (isOverdue || isStepOverdue)
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
+                  color: Colors.red.withValues(alpha: 0.5), width: 1),
+            )
+          : null,
       child: InkWell(
         onTap: () => _navigateToProject(context, project),
         child: Padding(
@@ -546,10 +790,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Overdue icon
+                  if (isOverdue || isStepOverdue)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 4),
+                      child: Icon(
+                        Icons.warning_amber,
+                        color: Colors.red,
+                        size: 18,
+                      ),
+                    ),
                   Expanded(
                     child: Text(
                       project.title,
-                      style: theme.textTheme.titleMedium,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        color: (isOverdue || isStepOverdue) ? Colors.red : null,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -596,7 +852,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Show status chip
+                  // Show current step chip (not general status)
                   project.isCompleted
                       ? Chip(
                           backgroundColor: Colors.green.withValues(alpha: 0.2),
@@ -608,31 +864,80 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           padding: EdgeInsets.zero,
-                          labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          labelPadding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 0),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
                           side: BorderSide.none,
                         )
                       : Chip(
-                          backgroundColor: AppHelpers.getProjectStatusColor(project.mainStatus)
+                          backgroundColor: AppHelpers.getProjectStatusColor(
+                                  project.mainStatus)
                               .withValues(alpha: 0.2),
                           label: Text(
-                            project.statusLabel,
+                            currentStepLabel, // Use current step label
                             style: TextStyle(
-                              color: AppHelpers.getProjectStatusColor(project.mainStatus),
+                              color: AppHelpers.getProjectStatusColor(
+                                  project.mainStatus),
                               fontSize: 12,
                             ),
                           ),
                           padding: EdgeInsets.zero,
-                          labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          labelPadding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 0),
+                          materialTapTargetSize:
+                              MaterialTapTargetSize.shrinkWrap,
                           side: BorderSide.none,
                         ),
-                  // Show due date or completion date
-                  Text(
-                    project.isCompleted
-                        ? 'Completed: ${_formatDate(project.completedAt!)}'
-                        : 'Due: ${_formatDate(project.deadline)}',
-                    style: theme.textTheme.bodySmall,
+                  // Show step due date or completion date with overdue indicator
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        project.isCompleted
+                            ? 'Completed: ${_formatDate(project.completedAt!)}'
+                            : currentStepDueDate != null
+                                ? 'Due: ${_formatDate(currentStepDueDate)}'
+                                : 'Project due: ${_formatDate(project.deadline)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: (isOverdue || isStepOverdue)
+                              ? Colors.red
+                              : Colors.grey[600],
+                          fontWeight: (isOverdue || isStepOverdue)
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                      ),
+                      if (isStepOverdue)
+                        if (stepDaysOverdue > 0)
+                          Text(
+                            'Overdue by $stepDaysOverdue days',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.red,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          )
+                        else
+                          const Text(
+                            'This is due today!',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.red,
+                              fontWeight: FontWeight.normal,
+                            ),
+                          )
+                      else if (isOverdue)
+                        Text(
+                          'Project overdue by $daysOverdue days',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.red,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                    ],
                   ),
                 ],
               ),
@@ -641,6 +946,83 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
       ),
     );
+  }
+
+  // Helper method to get the current step label (for display)
+  String _getCurrentStepLabel(ProjectModel project) {
+    if (project.isCompleted) {
+      return 'Completed';
+    }
+
+    // Get the list of all sub-statuses for the current main status
+    final subStatuses =
+        ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
+
+    // Look for the next incomplete step that needs attention
+    String? nextIncompleteStep;
+    for (final status in subStatuses) {
+      final value = status['value'];
+      if (value != null && !project.statusDates.containsKey(value)) {
+        // Found the first incomplete step
+        nextIncompleteStep = status['label'];
+        break;
+      }
+    }
+
+    // If we found a next step, use that; otherwise fall back to the current subStatus
+    if (nextIncompleteStep != null) {
+      return nextIncompleteStep;
+    }
+
+    // If all steps in this phase are complete, find the current step (probably the last one completed)
+    final currentSubStatus = subStatuses.firstWhere(
+        (status) => status['value'] == project.subStatus,
+        orElse: () =>
+            {'label': project.statusLabel, 'value': project.subStatus});
+
+    return currentSubStatus['label'] ?? project.statusLabel;
+  }
+
+  // Helper method to calculate the due date for the current step
+  DateTime? _getStepDueDate(ProjectModel project) {
+    if (project.isCompleted) return null;
+
+    // Get the list of sub-statuses for the current main status
+    final subStatuses =
+        ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
+
+    // Find the first incomplete step
+    String? nextIncompleteStep;
+    for (final status in subStatuses) {
+      final value = status['value'];
+      if (value != null && !project.statusDates.containsKey(value)) {
+        // Found the first incomplete step
+        nextIncompleteStep = value;
+        break;
+      }
+    }
+
+    // If there's a next incomplete step, try to get its scheduled date
+    if (nextIncompleteStep != null) {
+      // Check if there's a scheduled date for this step
+      final scheduledDate =
+          project.getScheduledDateForSubStatus(nextIncompleteStep);
+      if (scheduledDate != null) {
+        return scheduledDate;
+      }
+    }
+
+    // If all steps in this phase are complete, use the last completed step date
+    if (subStatuses.isNotEmpty) {
+      final lastSubStatus = subStatuses.last['value'];
+      if (lastSubStatus != null &&
+          project.statusDates.containsKey(lastSubStatus)) {
+        return project.statusDates[lastSubStatus];
+      }
+    }
+
+    // Fallback to project deadline if no other date is available
+    return project.deadline;
   }
 
   void _handleProjectDrop(ProjectModel project, String columnTitle) async {
@@ -716,12 +1098,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // If there's a search query, return all projects matching the search including completed ones
     if (_searchQuery.isNotEmpty) {
       return projects.where((project) {
-        return project.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            project.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+        return project.title
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()) ||
+            project.description
+                .toLowerCase()
+                .contains(_searchQuery.toLowerCase()) ||
             project.isbn.toLowerCase().contains(_searchQuery.toLowerCase());
       }).toList();
     }
-    
+
     // If no search query, return all projects (including completed ones)
     // Completed ones will be shown in the Completed section but filtered from main columns
     return projects;
@@ -767,53 +1153,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final titleController = TextEditingController();
     final isbnController = TextEditingController();
     final descriptionController = TextEditingController();
-    final deadlineController = TextEditingController(
-      text: _formatDate(
-        DateTime.now().add(const Duration(days: 30)),
-      ),
-    );
 
-    // Map to store dates for each sub-status
-    final Map<String, DateTime> statusDates = {};
+    // Map to store dates for each sub-status - explicitly for scheduling, not for completion status
+    final Map<String, DateTime?> scheduledDates = {};
     final Map<String, TextEditingController> dateControllers = {};
 
-    // Set up date controllers for each substatus type with properly spaced dates
-    final now = DateTime.now();
-
-    // Calculate durations between design, paging, proofing, and epub phases
-    // Each phase is scheduled for 2 weeks
-    final designStartDate = now;
-    final pagingStartDate =
-        now.add(const Duration(days: 14)); // 2 weeks after design start
-    final proofingStartDate = pagingStartDate
-        .add(const Duration(days: 14)); // 2 weeks after paging start
-    final epubStartDate = proofingStartDate
-        .add(const Duration(days: 14)); // 2 weeks after proofing start
-
-    // Setup controllers for all substatus types with reasonable spacing between steps
-    void setupDateControllers(
-        List<Map<String, String>> subStatuses, DateTime phaseStartDate) {
+    // Initialize date controllers but don't set default values
+    void setupDateControllers(List<Map<String, String>> subStatuses) {
       for (final subStatus in subStatuses) {
-        // Space steps within each phase evenly
-        final daysToAdd = (subStatuses.indexOf(subStatus) * 3); // 3 days apart
-        final dueDate = phaseStartDate.add(Duration(days: daysToAdd));
-
-        dateControllers[subStatus['value']!] = TextEditingController(
-          text: _formatDate(dueDate),
-        );
-        // We'll just set up the controllers, but NOT store in statusDates map
-        // This way steps won't appear completed initially
-        // Plans will still be stored in controllers for form validation purposes
+        // Initialize with empty text field
+        dateControllers[subStatus['value']!] = TextEditingController();
+        // Initialize scheduled dates as null
+        scheduledDates[subStatus['value']!] = null;
       }
     }
 
-    // Setup all status types with appropriate phase start dates
-    setupDateControllers(ProjectModel.designSubStatuses, designStartDate);
-    setupDateControllers(ProjectModel.pagingSubStatuses, pagingStartDate);
-    setupDateControllers(ProjectModel.proofingSubStatuses, proofingStartDate);
-    setupDateControllers(ProjectModel.epubSubStatuses, epubStartDate);
+    // Setup all status types with empty date fields
+    setupDateControllers(ProjectModel.designSubStatuses);
+    setupDateControllers(ProjectModel.pagingSubStatuses);
+    setupDateControllers(ProjectModel.proofingSubStatuses);
+    setupDateControllers(ProjectModel.epubSubStatuses);
 
-    // Helper function to validate and parse data
+    // Helper function to validate and parse date
     DateTime? parseDateMMDDYYYY(String input) {
       // Check format MM/DD/YYYY
       final RegExp dateRegex = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
@@ -835,6 +1196,122 @@ class _DashboardScreenState extends State<DashboardScreen> {
         }
       }
       return null;
+    }
+
+    // Helper to validate the date sequence for a phase
+    String? validatePhaseSequence(
+        List<Map<String, String>> phaseSubStatuses, String phaseName) {
+      DateTime? previousDate;
+      String? previousLabel;
+
+      for (final subStatus in phaseSubStatuses) {
+        final value = subStatus['value']!;
+        final label = subStatus['label']!;
+        final date = scheduledDates[value];
+
+        // Check if date exists
+        if (date == null) {
+          return 'Please enter a date for $label in $phaseName phase';
+        }
+
+        // Check sequence with previous date
+        if (previousDate != null && date.isBefore(previousDate)) {
+          return '$label date must be on or after $previousLabel date';
+        }
+
+        previousDate = date;
+        previousLabel = label;
+      }
+
+      return null; // No validation errors
+    }
+
+    // Helper to validate all phase sequences
+    List<String> validateAllPhaseSequences() {
+      final List<String> errors = [];
+
+      // Validate each phase internally
+      final String? designError =
+          validatePhaseSequence(ProjectModel.designSubStatuses, 'Design');
+      if (designError != null) errors.add(designError);
+
+      final String? pagingError =
+          validatePhaseSequence(ProjectModel.pagingSubStatuses, 'Paging');
+      if (pagingError != null) errors.add(pagingError);
+
+      final String? proofingError =
+          validatePhaseSequence(ProjectModel.proofingSubStatuses, 'Proofing');
+      if (proofingError != null) errors.add(proofingError);
+
+      final String? epubError =
+          validatePhaseSequence(ProjectModel.epubSubStatuses, 'E-Pub');
+      if (epubError != null) errors.add(epubError);
+
+      // Validate phase transitions
+      DateTime? lastDesignDate;
+      if (!errors.isEmpty) return errors; // Return if there are already errors
+
+      // Get last date of each phase
+      if (ProjectModel.designSubStatuses.isNotEmpty) {
+        final lastDesignStatus = ProjectModel.designSubStatuses.last['value']!;
+        lastDesignDate = scheduledDates[lastDesignStatus];
+      }
+
+      DateTime? firstPagingDate;
+      if (ProjectModel.pagingSubStatuses.isNotEmpty) {
+        final firstPagingStatus =
+            ProjectModel.pagingSubStatuses.first['value']!;
+        firstPagingDate = scheduledDates[firstPagingStatus];
+      }
+
+      if (lastDesignDate != null &&
+          firstPagingDate != null &&
+          firstPagingDate.isBefore(lastDesignDate)) {
+        errors.add(
+            'First Paging phase date must be on or after last Design phase date');
+      }
+
+      DateTime? lastPagingDate;
+      if (ProjectModel.pagingSubStatuses.isNotEmpty) {
+        final lastPagingStatus = ProjectModel.pagingSubStatuses.last['value']!;
+        lastPagingDate = scheduledDates[lastPagingStatus];
+      }
+
+      DateTime? firstProofingDate;
+      if (ProjectModel.proofingSubStatuses.isNotEmpty) {
+        final firstProofingStatus =
+            ProjectModel.proofingSubStatuses.first['value']!;
+        firstProofingDate = scheduledDates[firstProofingStatus];
+      }
+
+      if (lastPagingDate != null &&
+          firstProofingDate != null &&
+          firstProofingDate.isBefore(lastPagingDate)) {
+        errors.add(
+            'First Proofing phase date must be on or after last Paging phase date');
+      }
+
+      DateTime? lastProofingDate;
+      if (ProjectModel.proofingSubStatuses.isNotEmpty) {
+        final lastProofingStatus =
+            ProjectModel.proofingSubStatuses.last['value']!;
+        lastProofingDate = scheduledDates[lastProofingStatus];
+      }
+
+      DateTime? firstEpubDate;
+      if (ProjectModel.epubSubStatuses.isNotEmpty) {
+        final firstEpubStatus = ProjectModel.epubSubStatuses.first['value']!;
+        firstEpubDate = scheduledDates[firstEpubStatus];
+      }
+
+      if (lastProofingDate != null &&
+          firstEpubDate != null &&
+          firstEpubDate.isBefore(lastProofingDate)) {
+        errors.add(
+            'First E-Pub phase date must be on or after last Proofing phase date');
+      }
+
+      return errors;
     }
 
     showDialog(
@@ -901,7 +1378,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 8),
                   const Text(
                     'New projects always start in the Design phase and progress through each stage. '
-                    'Please set target dates for each step below:',
+                    'Please enter target dates for each step below. Dates within each phase and '
+                    'between phases must be in sequential order.',
                     style: TextStyle(
                       fontStyle: FontStyle.italic,
                       color: Colors.grey,
@@ -931,8 +1409,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                            'Schedule target dates for all design steps:'),
+                        const Text('Enter target dates for all design steps:'),
                         const SizedBox(height: 12),
                         ...ProjectModel.designSubStatuses.map((subStatus) {
                           return Padding(
@@ -953,14 +1430,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   decoration: const InputDecoration(
                                     hintText: 'MM/DD/YYYY',
                                     border: OutlineInputBorder(),
+                                    helperText: 'Required',
                                   ),
                                   onChanged: (value) {
                                     final date = parseDateMMDDYYYY(value);
-                                    if (date != null) {
-                                      setState(() {
-                                        statusDates[subStatus['value']!] = date;
-                                      });
-                                    }
+                                    setState(() {
+                                      scheduledDates[subStatus['value']!] =
+                                          date;
+                                    });
                                   },
                                 )
                               ],
@@ -993,8 +1470,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                            'Schedule target dates for all paging steps:'),
+                        const Text('Enter target dates for all paging steps:'),
                         const SizedBox(height: 12),
                         ...ProjectModel.pagingSubStatuses.map((subStatus) {
                           return Padding(
@@ -1015,14 +1491,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   decoration: const InputDecoration(
                                     hintText: 'MM/DD/YYYY',
                                     border: OutlineInputBorder(),
+                                    helperText: 'Required',
                                   ),
                                   onChanged: (value) {
                                     final date = parseDateMMDDYYYY(value);
-                                    if (date != null) {
-                                      setState(() {
-                                        statusDates[subStatus['value']!] = date;
-                                      });
-                                    }
+                                    setState(() {
+                                      scheduledDates[subStatus['value']!] =
+                                          date;
+                                    });
                                   },
                                 )
                               ],
@@ -1056,7 +1532,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                            'Schedule target dates for all proofing steps:'),
+                            'Enter target dates for all proofing steps:'),
                         const SizedBox(height: 12),
                         ...ProjectModel.proofingSubStatuses.map((subStatus) {
                           return Padding(
@@ -1077,14 +1553,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   decoration: const InputDecoration(
                                     hintText: 'MM/DD/YYYY',
                                     border: OutlineInputBorder(),
+                                    helperText: 'Required',
                                   ),
                                   onChanged: (value) {
                                     final date = parseDateMMDDYYYY(value);
-                                    if (date != null) {
-                                      setState(() {
-                                        statusDates[subStatus['value']!] = date;
-                                      });
-                                    }
+                                    setState(() {
+                                      scheduledDates[subStatus['value']!] =
+                                          date;
+                                    });
                                   },
                                 )
                               ],
@@ -1117,8 +1593,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                            'Schedule target dates for all e-pub steps:'),
+                        const Text('Enter target dates for all e-pub steps:'),
                         const SizedBox(height: 12),
                         ...ProjectModel.epubSubStatuses.map((subStatus) {
                           return Padding(
@@ -1139,14 +1614,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   decoration: const InputDecoration(
                                     hintText: 'MM/DD/YYYY',
                                     border: OutlineInputBorder(),
+                                    helperText: 'Required',
                                   ),
                                   onChanged: (value) {
                                     final date = parseDateMMDDYYYY(value);
-                                    if (date != null) {
-                                      setState(() {
-                                        statusDates[subStatus['value']!] = date;
-                                      });
-                                    }
+                                    setState(() {
+                                      scheduledDates[subStatus['value']!] =
+                                          date;
+                                    });
                                   },
                                 )
                               ],
@@ -1167,6 +1642,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                // Basic validation
                 if (titleController.text.isEmpty ||
                     descriptionController.text.isEmpty ||
                     isbnController.text.isEmpty) {
@@ -1178,86 +1654,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return;
                 }
 
-                // Validate deadline
-                final deadline = parseDateMMDDYYYY(deadlineController.text);
-                if (deadline == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Invalid date format. Use MM/DD/YYYY'),
-                    ),
-                  );
-                  return;
-                }
+                // Validate and check sequence of all dates
+                final validationErrors = validateAllPhaseSequences();
 
-                // Validate all substatus dates for all phases
-                bool allDatesValid = true;
-                final Map<String, DateTime> validatedStatusDates = {};
-                String? missingPhase;
-
-                // Check all phases to ensure every status has a date
-                const List<String> phaseNames = [
-                  'Design',
-                  'Paging',
-                  'Proofing',
-                  'E-Pub'
-                ];
-                final List<List<Map<String, String>>> allPhaseStatuses = [
-                  ProjectModel.designSubStatuses,
-                  ProjectModel.pagingSubStatuses,
-                  ProjectModel.proofingSubStatuses,
-                  ProjectModel.epubSubStatuses,
-                ];
-
-                // Validate dates for all substatus items in all phases
-                for (int phaseIndex = 0;
-                    phaseIndex < allPhaseStatuses.length;
-                    phaseIndex++) {
-                  final subStatuses = allPhaseStatuses[phaseIndex];
-
-                  // Check each substatus in this phase
-                  for (final subStatus in subStatuses) {
-                    final controller = dateControllers[subStatus['value']];
-                    if (controller != null) {
-                      // Check if date is valid
-                      final date = parseDateMMDDYYYY(controller.text);
-                      if (date == null) {
-                        allDatesValid = false;
-                        missingPhase = phaseNames[phaseIndex];
-                        break;
-                      }
-                      // Store target dates but don't mark as completed
-                      validatedStatusDates[subStatus['value']!] = date;
-                    } else {
-                      // Missing controller for a required status
-                      allDatesValid = false;
-                      missingPhase = phaseNames[phaseIndex];
-                      break;
-                    }
-                  }
-
-                  if (!allDatesValid) {
-                    break;
-                  }
-                }
-
-                if (!allDatesValid) {
+                if (validationErrors.isNotEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(missingPhase != null
-                          ? 'Please fill in all target dates for the $missingPhase phase.'
-                          : 'Please provide valid dates for all phases in MM/DD/YYYY format.'),
+                      content: Text(validationErrors.first),
+                      duration: const Duration(seconds: 3),
                     ),
                   );
                   return;
                 }
 
-                // Create empty statusDates map - no steps will be marked as completed
-                // We'll save the schedule dates, but they won't be shown as completed
-                // in the projects screen
-                statusDates.clear(); // Ensure nothing is marked as completed
+                // Set deadline to the last date in the final phase
+                DateTime deadline;
+                if (ProjectModel.epubSubStatuses.isNotEmpty) {
+                  final lastEpubStatus =
+                      ProjectModel.epubSubStatuses.last['value']!;
+                  deadline = scheduledDates[lastEpubStatus]!;
+                } else {
+                  // Fallback if no epub substatus exists (shouldn't happen)
+                  deadline = DateTime.now().add(const Duration(days: 30));
+                }
 
+                // All validation passed, we can create the project
                 final userId = authProvider.user?.id;
                 if (userId == null) return;
+
+                // Convert nullable scheduledDates to non-nullable for the project model
+                final Map<String, DateTime> validScheduledDates = {};
+                scheduledDates.forEach((key, date) {
+                  if (date != null) {
+                    validScheduledDates[key] = date;
+                  }
+                });
 
                 // Always start with Design phase and first step
                 final newProject = ProjectModel(
@@ -1270,7 +1701,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   subStatus: ProjectModel.designSubStatuses.isNotEmpty
                       ? ProjectModel.designSubStatuses[0]['value']!
                       : 'design_initial', // First design step
-                  statusDates: {}, // Start with empty statusDates - nothing marked as completed
+                  statusDates: {}, // Empty statusDates - nothing marked as completed yet
+                  scheduledDates:
+                      validScheduledDates, // Store all user-entered due dates
                   deadline: deadline,
                   ownerId: userId,
                   createdAt: DateTime.now(),

@@ -488,23 +488,23 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
   // Format the planned date for a step that hasn't been completed yet
   String _formatPlannedDate(String subStatusValue, ProjectModel project) {
-    // Since we don't have actual planned dates in the current model,
-    // we'll generate them based on the project creation date
-    // In a full implementation, you'd retrieve this from a plannedDates map
-
-    // Get list of all substatus values for the current main status
+    // Check if we have a scheduled date for this substatus
+    final scheduledDate = project.getScheduledDateForSubStatus(subStatusValue);
+    if (scheduledDate != null) {
+      return _formatDate(scheduledDate);
+    }
+    
+    // Fallback to project creation date if no scheduled date exists
+    // This should only happen for projects created before we added scheduled dates
     final subStatuses =
         ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
     final index = subStatuses.indexWhere((s) => s['value'] == subStatusValue);
 
     if (index >= 0) {
-      // Calculate a planned date based on project creation plus days per step
-      final daysToAdd = index * 7; // One week per step
-      final plannedDate = project.createdAt.add(Duration(days: daysToAdd));
-      return _formatDate(plannedDate);
+      return _formatDate(project.createdAt);
     }
 
-    // Fallback if we can't calculate a planned date
+    // Fallback if we can't find a date
     return '--/--/----';
   }
 

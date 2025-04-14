@@ -46,7 +46,8 @@ class ProjectModel {
   final String isbn; // ISBN number for the book
   final ProjectMainStatus mainStatus;
   final String subStatus; // Store as string to handle different enum types
-  final Map<String, DateTime> statusDates; // Store dates for each sub-status
+  final Map<String, DateTime> statusDates; // Store dates for each sub-status (when completed)
+  final Map<String, DateTime> scheduledDates; // Store scheduled/planned dates for each sub-status
   final DateTime deadline;
   final String coverImageUrl;
   final String ownerId;
@@ -63,6 +64,7 @@ class ProjectModel {
     required this.mainStatus,
     required this.subStatus,
     Map<String, DateTime>? statusDates,
+    Map<String, DateTime>? scheduledDates,
     required this.deadline,
     this.coverImageUrl = '',
     required this.ownerId,
@@ -70,13 +72,20 @@ class ProjectModel {
     required this.updatedAt,
     this.isCompleted = false,
     this.completedAt,
-  }) : statusDates = statusDates ?? {};
+  }) : statusDates = statusDates ?? {},
+       scheduledDates = scheduledDates ?? {};
 
   Map<String, dynamic> toMap() {
     // Convert statusDates Map to a format that can be stored in Firestore
     final Map<String, int> dateMap = {};
     statusDates.forEach((key, value) {
       dateMap[key] = value.millisecondsSinceEpoch;
+    });
+    
+    // Convert scheduledDates Map to a format that can be stored in Firestore
+    final Map<String, int> scheduledDateMap = {};
+    scheduledDates.forEach((key, value) {
+      scheduledDateMap[key] = value.millisecondsSinceEpoch;
     });
 
     return {
@@ -87,6 +96,7 @@ class ProjectModel {
       'mainStatus': mainStatus.index,
       'subStatus': subStatus,
       'statusDates': dateMap,
+      'scheduledDates': scheduledDateMap,
       'deadline': deadline.millisecondsSinceEpoch,
       'coverImageUrl': coverImageUrl,
       'ownerId': ownerId,
@@ -105,6 +115,14 @@ class ProjectModel {
         dateMap[key] = DateTime.fromMillisecondsSinceEpoch(value as int);
       });
     }
+    
+    // Convert scheduledDates Map from Firestore format back to Map<String, DateTime>
+    final Map<String, DateTime> scheduledDateMap = {};
+    if (map['scheduledDates'] != null) {
+      (map['scheduledDates'] as Map<String, dynamic>).forEach((key, value) {
+        scheduledDateMap[key] = DateTime.fromMillisecondsSinceEpoch(value as int);
+      });
+    }
 
     DateTime? completedAt;
     if (map['completedAt'] != null) {
@@ -119,6 +137,7 @@ class ProjectModel {
       mainStatus: ProjectMainStatus.values[map['mainStatus'] as int],
       subStatus: map['subStatus'] as String? ?? '',
       statusDates: dateMap,
+      scheduledDates: scheduledDateMap,
       deadline: DateTime.fromMillisecondsSinceEpoch(map['deadline'] as int),
       coverImageUrl: map['coverImageUrl'] as String? ?? '',
       ownerId: map['ownerId'] as String,
@@ -157,6 +176,7 @@ class ProjectModel {
     ProjectMainStatus? mainStatus,
     String? subStatus,
     Map<String, DateTime>? statusDates,
+    Map<String, DateTime>? scheduledDates,
     DateTime? deadline,
     String? coverImageUrl,
     String? ownerId,
@@ -173,6 +193,7 @@ class ProjectModel {
       mainStatus: mainStatus ?? this.mainStatus,
       subStatus: subStatus ?? this.subStatus,
       statusDates: statusDates ?? Map.from(this.statusDates),
+      scheduledDates: scheduledDates ?? Map.from(this.scheduledDates),
       deadline: deadline ?? this.deadline,
       coverImageUrl: coverImageUrl ?? this.coverImageUrl,
       ownerId: ownerId ?? this.ownerId,
@@ -320,9 +341,14 @@ class ProjectModel {
     return true;
   }
 
-  // Get the date for a specific sub-status
+  // Get the completion date for a specific sub-status
   DateTime? getDateForSubStatus(String subStatus) {
     return statusDates[subStatus];
+  }
+  
+  // Get the scheduled/planned date for a specific sub-status
+  DateTime? getScheduledDateForSubStatus(String subStatus) {
+    return scheduledDates[subStatus];
   }
 
   // Check if a substatus is completed (has a date)

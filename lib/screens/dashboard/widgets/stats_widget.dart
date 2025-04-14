@@ -20,28 +20,26 @@ class StatsWidget extends StatelessWidget {
 
     // Count by sub-status for specific categories
     final subStatusCounts = <String, int>{};
-    
+
     for (final project in projects) {
       // Update main status counts
-      statusCounts[project.mainStatus] = (statusCounts[project.mainStatus] ?? 0) + 1;
-      
+      statusCounts[project.mainStatus] =
+          (statusCounts[project.mainStatus] ?? 0) + 1;
+
       // Update sub-status counts
-      subStatusCounts[project.subStatus] = (subStatusCounts[project.subStatus] ?? 0) + 1;
+      subStatusCounts[project.subStatus] =
+          (subStatusCounts[project.subStatus] ?? 0) + 1;
     }
 
     // Calculate deadlines
     final now = DateTime.now();
     final upcomingDeadlines = projects
-        .where((p) =>
-            p.deadline.isAfter(now) &&
-            p.deadline.difference(now).inDays <= 7)
+        .where((p) => p.deadline.isAfter(now))
         .toList()
       ..sort((a, b) => a.deadline.compareTo(b.deadline));
 
-    final missedDeadlines = projects
-        .where((p) =>
-            p.deadline.isBefore(now))
-        .length;
+    final missedDeadlines =
+        projects.where((p) => p.deadline.isBefore(now)).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
