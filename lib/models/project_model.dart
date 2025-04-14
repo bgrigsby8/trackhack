@@ -44,6 +44,8 @@ class ProjectModel {
   final String title;
   final String description;
   final String isbn; // ISBN number for the book
+  final String productionEditor; // Production editor name
+  final String format; // Book format
   final ProjectMainStatus mainStatus;
   final String subStatus; // Store as string to handle different enum types
   final Map<String, DateTime> statusDates; // Store dates for each sub-status (when completed)
@@ -55,12 +57,23 @@ class ProjectModel {
   final DateTime updatedAt;
   final bool isCompleted; // Flag to indicate if the project is completed
   final DateTime? completedAt; // Date when the project was completed
+  
+  // Metadata fields
+  final String imprint; // Publisher's imprint
+  final DateTime? printerDate; // Printer date
+  final DateTime? scDate; // S.C. date
+  final DateTime? pubDate; // Publication date
+  final String notes; // Additional notes
+  final String ukCoPub; // UK co-publication information
+  final bool pageCountSent; // Page count sent flag
 
   ProjectModel({
     required this.id,
     required this.title,
     required this.description,
     required this.isbn,
+    required this.productionEditor,
+    required this.format,
     required this.mainStatus,
     required this.subStatus,
     Map<String, DateTime>? statusDates,
@@ -72,6 +85,13 @@ class ProjectModel {
     required this.updatedAt,
     this.isCompleted = false,
     this.completedAt,
+    this.imprint = '',
+    this.printerDate,
+    this.scDate,
+    this.pubDate,
+    this.notes = '',
+    this.ukCoPub = '',
+    this.pageCountSent = false,
   }) : statusDates = statusDates ?? {},
        scheduledDates = scheduledDates ?? {};
 
@@ -93,6 +113,8 @@ class ProjectModel {
       'title': title,
       'description': description,
       'isbn': isbn,
+      'productionEditor': productionEditor,
+      'format': format,
       'mainStatus': mainStatus.index,
       'subStatus': subStatus,
       'statusDates': dateMap,
@@ -104,6 +126,14 @@ class ProjectModel {
       'updatedAt': updatedAt.millisecondsSinceEpoch,
       'isCompleted': isCompleted,
       'completedAt': completedAt?.millisecondsSinceEpoch,
+      // Metadata fields
+      'imprint': imprint,
+      'printerDate': printerDate?.millisecondsSinceEpoch,
+      'scDate': scDate?.millisecondsSinceEpoch,
+      'pubDate': pubDate?.millisecondsSinceEpoch,
+      'notes': notes,
+      'ukCoPub': ukCoPub,
+      'pageCountSent': pageCountSent,
     };
   }
 
@@ -124,9 +154,25 @@ class ProjectModel {
       });
     }
 
+    // Parse optional DateTime fields
     DateTime? completedAt;
     if (map['completedAt'] != null) {
       completedAt = DateTime.fromMillisecondsSinceEpoch(map['completedAt'] as int);
+    }
+    
+    DateTime? printerDate;
+    if (map['printerDate'] != null) {
+      printerDate = DateTime.fromMillisecondsSinceEpoch(map['printerDate'] as int);
+    }
+    
+    DateTime? scDate;
+    if (map['scDate'] != null) {
+      scDate = DateTime.fromMillisecondsSinceEpoch(map['scDate'] as int);
+    }
+    
+    DateTime? pubDate;
+    if (map['pubDate'] != null) {
+      pubDate = DateTime.fromMillisecondsSinceEpoch(map['pubDate'] as int);
     }
 
     var test = ProjectModel(
@@ -134,6 +180,8 @@ class ProjectModel {
       title: map['title'] as String,
       description: map['description'] as String,
       isbn: map['isbn'] as String? ?? '',
+      productionEditor: map['productionEditor'] as String? ?? '',
+      format: map['format'] as String? ?? '',
       mainStatus: ProjectMainStatus.values[map['mainStatus'] as int],
       subStatus: map['subStatus'] as String? ?? '',
       statusDates: dateMap,
@@ -145,6 +193,14 @@ class ProjectModel {
       updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updatedAt'] as int),
       isCompleted: map['isCompleted'] as bool? ?? false,
       completedAt: completedAt,
+      // Metadata fields
+      imprint: map['imprint'] as String? ?? '',
+      printerDate: printerDate,
+      scDate: scDate,
+      pubDate: pubDate,
+      notes: map['notes'] as String? ?? '',
+      ukCoPub: map['ukCoPub'] as String? ?? '',
+      pageCountSent: map['pageCountSent'] as bool? ?? false,
     );
 
     return test;
@@ -173,6 +229,8 @@ class ProjectModel {
     String? title,
     String? description,
     String? isbn,
+    String? productionEditor,
+    String? format, 
     ProjectMainStatus? mainStatus,
     String? subStatus,
     Map<String, DateTime>? statusDates,
@@ -184,12 +242,21 @@ class ProjectModel {
     DateTime? updatedAt,
     bool? isCompleted,
     DateTime? completedAt,
+    String? imprint,
+    DateTime? printerDate,
+    DateTime? scDate,
+    DateTime? pubDate,
+    String? notes,
+    String? ukCoPub,
+    bool? pageCountSent,
   }) {
     return ProjectModel(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
       isbn: isbn ?? this.isbn,
+      productionEditor: productionEditor ?? this.productionEditor,
+      format: format ?? this.format,
       mainStatus: mainStatus ?? this.mainStatus,
       subStatus: subStatus ?? this.subStatus,
       statusDates: statusDates ?? Map.from(this.statusDates),
@@ -201,6 +268,13 @@ class ProjectModel {
       updatedAt: updatedAt ?? this.updatedAt,
       isCompleted: isCompleted ?? this.isCompleted,
       completedAt: completedAt ?? this.completedAt,
+      imprint: imprint ?? this.imprint,
+      printerDate: printerDate ?? this.printerDate,
+      scDate: scDate ?? this.scDate,
+      pubDate: pubDate ?? this.pubDate,
+      notes: notes ?? this.notes,
+      ukCoPub: ukCoPub ?? this.ukCoPub,
+      pageCountSent: pageCountSent ?? this.pageCountSent,
     );
   }
 

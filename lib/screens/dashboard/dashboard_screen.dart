@@ -6,6 +6,7 @@ import '../../providers/project_provider.dart';
 import '../../models/project_model.dart';
 import '../../utils/helpers.dart';
 import '../project/project_screen.dart';
+import 'widgets/import_csv_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -123,17 +124,35 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildSearchAndFilter(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: TextField(
-        decoration: const InputDecoration(
-          hintText: 'Search projects...',
-          prefixIcon: Icon(Icons.search),
-          border: OutlineInputBorder(),
-        ),
-        onChanged: (value) {
-          setState(() {
-            _searchQuery = value;
-          });
-        },
+      child: Row(
+        children: [
+          // Search field
+          Expanded(
+            child: TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search projects...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                setState(() {
+                  _searchQuery = value;
+                });
+              },
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Import CSV button
+          ElevatedButton.icon(
+            onPressed: () => _showImportCsvDialog(context),
+            icon: const Icon(Icons.file_upload),
+            label: const Text('Import CSV'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -905,6 +924,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final titleController = TextEditingController();
     final isbnController = TextEditingController();
     final descriptionController = TextEditingController();
+    final productionEditorController = TextEditingController();
+    final formatController = TextEditingController();
+    
+    // Controllers for metadata fields
+    final imprintController = TextEditingController();
+    final notesController = TextEditingController();
+    final printerDateController = TextEditingController();
+    final scDateController = TextEditingController();
+    final pubDateController = TextEditingController();
+    
+    // Controllers for additional metadata
+    final ukCoPubController = TextEditingController();
+    // Boolean values for metadata checkboxes
+    bool pageCountSent = false;
 
     // Map to store dates for each sub-status - explicitly for scheduling, not for completion status
     final Map<String, DateTime?> scheduledDates = {};
@@ -1109,6 +1142,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
+                    'Production Editor',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: productionEditorController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter production editor name',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Format',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: formatController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter book format',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
                     'Description',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
@@ -1121,6 +1180,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                     maxLines: 3,
                   ),
+                  const SizedBox(height: 16),
+                  
+                  // Metadata Section Header
+                  const Text(
+                    'Metadata',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Metadata fields in a compact format
+                  _buildMetadataSection(
+                    context: context, 
+                    setState: setState,
+                    imprintController: imprintController,
+                    notesController: notesController,
+                    printerDateController: printerDateController,
+                    scDateController: scDateController,
+                    pubDateController: pubDateController,
+                    ukCoPubController: ukCoPubController,
+                    pageCountSent: pageCountSent,
+                    onPageCountSentChanged: (value) {
+                      setState(() {
+                        pageCountSent = value ?? false;
+                      });
+                    },
+                  ),
+                  
                   const SizedBox(height: 16),
 
                   // Project Schedule Section Header
@@ -1401,7 +1490,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 // Basic validation
                 if (titleController.text.isEmpty ||
                     descriptionController.text.isEmpty ||
-                    isbnController.text.isEmpty) {
+                    isbnController.text.isEmpty ||
+                    productionEditorController.text.isEmpty ||
+                    formatController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Please fill in all required fields'),
@@ -1447,11 +1538,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 });
 
                 // Always start with Design phase and first step
+                // Parse metadata date fields
+                DateTime? printerDate = parseDateMMDDYYYY(printerDateController.text);
+                DateTime? scDate = parseDateMMDDYYYY(scDateController.text);
+                DateTime? pubDate = parseDateMMDDYYYY(pubDateController.text);
+                
                 final newProject = ProjectModel(
                   id: '', // Will be set by the service
                   title: titleController.text,
                   description: descriptionController.text,
                   isbn: isbnController.text,
+                  productionEditor: productionEditorController.text,
+                  format: formatController.text,
                   mainStatus:
                       ProjectMainStatus.design, // Always start at design phase
                   subStatus: ProjectModel.designSubStatuses.isNotEmpty
@@ -1464,6 +1562,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ownerId: userId,
                   createdAt: DateTime.now(),
                   updatedAt: DateTime.now(),
+                  // Metadata fields
+                  imprint: imprintController.text.trim(),
+                  printerDate: printerDate,
+                  scDate: scDate, 
+                  pubDate: pubDate,
+                  notes: notesController.text.trim(),
+                  ukCoPub: ukCoPubController.text.trim(),
+                  pageCountSent: pageCountSent,
                 );
 
                 Navigator.pop(context);
@@ -1625,6 +1731,234 @@ class _DashboardScreenState extends State<DashboardScreen> {
               authProvider.signOut();
             },
             child: const Text('Sign Out'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  // Show dialog to import CSV file
+  void _showImportCsvDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const ImportCsvDialog(),
+    );
+  }
+  
+  // Method to build the metadata section
+  Widget _buildMetadataSection({
+    required BuildContext context,
+    required StateSetter setState,
+    required TextEditingController imprintController,
+    required TextEditingController notesController,
+    required TextEditingController printerDateController,
+    required TextEditingController scDateController,
+    required TextEditingController pubDateController,
+    required TextEditingController ukCoPubController,
+    required bool pageCountSent,
+    required Function(bool?) onPageCountSentChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row 1: Imprint
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Imprint:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: imprintController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter imprint',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Row 2: Dates
+          Row(
+            children: [
+              // Printer Date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Printer Date:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: printerDateController,
+                        decoration: const InputDecoration(
+                          hintText: 'MM/DD/YYYY',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // S.C. Date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'S.C. Date:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: scDateController,
+                        decoration: const InputDecoration(
+                          hintText: 'MM/DD/YYYY',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // Pub Date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pub Date:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: pubDateController,
+                        decoration: const InputDecoration(
+                          hintText: 'MM/DD/YYYY',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Row 3: Notes
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Notes:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 60,
+                      child: TextField(
+                        controller: notesController,
+                        decoration: const InputDecoration(
+                          hintText: 'Additional notes',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        ),
+                        maxLines: 2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Row 4: Checkboxes
+          Row(
+            children: [
+              // UK co-pub field
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'UK co-pub:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: ukCoPubController,
+                        decoration: const InputDecoration(
+                          hintText: 'UK co-publication details',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Page Count Sent checkbox
+              Expanded(
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: pageCountSent,
+                      onChanged: onPageCountSentChanged,
+                    ),
+                    const Text('Page Count Sent?'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),

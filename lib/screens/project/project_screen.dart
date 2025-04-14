@@ -574,6 +574,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final descriptionController =
         TextEditingController(text: project.description);
     final isbnController = TextEditingController(text: project.isbn);
+    final productionEditorController = TextEditingController(text: project.productionEditor);
+    final formatController = TextEditingController(text: project.format);
 
     // Map to store dates for each sub-status
     final Map<String, DateTime?> scheduledDates = {};
@@ -744,6 +746,26 @@ class _ProjectScreenState extends State<ProjectScreen> {
       return errors;
     }
 
+    // Controllers for metadata text and date fields
+    final imprintController = TextEditingController(text: project.imprint);
+    final notesController = TextEditingController(text: project.notes);
+    
+    // Controllers for metadata date fields
+    final printerDateController = TextEditingController(
+      text: project.printerDate != null ? _formatDate(project.printerDate!) : ''
+    );
+    final scDateController = TextEditingController(
+      text: project.scDate != null ? _formatDate(project.scDate!) : ''
+    );
+    final pubDateController = TextEditingController(
+      text: project.pubDate != null ? _formatDate(project.pubDate!) : ''
+    );
+    
+    // Controller for UK co-pub
+    final ukCoPubController = TextEditingController(text: project.ukCoPub);
+    // Boolean values for checkboxes
+    bool pageCountSent = project.pageCountSent;
+
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
@@ -786,6 +808,32 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Text(
+                    'Production Editor',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: productionEditorController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter production editor name',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Format',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: formatController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter book format',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
                     'Description',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
@@ -798,6 +846,37 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     ),
                     maxLines: 3,
                   ),
+                  const SizedBox(height: 16),
+                  
+                  // Metadata Section Header
+                  const Text(
+                    'Metadata',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  
+                  // Metadata fields in a compact format
+                  _buildMetadataSection(
+                    project: project,
+                    context: context, 
+                    setState: setState,
+                    imprintController: imprintController,
+                    notesController: notesController,
+                    printerDateController: printerDateController,
+                    scDateController: scDateController,
+                    pubDateController: pubDateController,
+                    ukCoPubController: ukCoPubController,
+                    pageCountSent: pageCountSent,
+                    onPageCountSentChanged: (value) {
+                      setState(() {
+                        pageCountSent = value ?? false;
+                      });
+                    },
+                  ),
+                  
                   const SizedBox(height: 16),
 
                   // Project Schedule Section Header
@@ -1076,7 +1155,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 // Basic validation
                 if (titleController.text.isEmpty ||
                     descriptionController.text.isEmpty ||
-                    isbnController.text.isEmpty) {
+                    isbnController.text.isEmpty ||
+                    productionEditorController.text.isEmpty ||
+                    formatController.text.isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
                       content: Text('Please fill in all required fields'),
@@ -1117,14 +1198,54 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   }
                 });
 
-                // Update project
+                // Get metadata values
+                final imprint = imprintController.text.trim();
+                final notes = notesController.text.trim();
+                
+                // Helper function to parse dates (ensuring it's available in this scope)
+                DateTime? parseDateFromField(String input) {
+                  if (input.isEmpty) return null;
+                  
+                  final RegExp dateRegex = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
+                  final match = dateRegex.firstMatch(input);
+    
+                  if (match != null) {
+                    final month = int.parse(match.group(1)!);
+                    final day = int.parse(match.group(2)!);
+                    final year = int.parse(match.group(3)!);
+    
+                    try {
+                      return DateTime(year, month, day);
+                    } catch (e) {
+                      return null;
+                    }
+                  }
+                  return null;
+                }
+                
+                // Parse date fields
+                DateTime? printerDate = parseDateFromField(printerDateController.text);
+                DateTime? scDate = parseDateFromField(scDateController.text);
+                DateTime? pubDate = parseDateFromField(pubDateController.text);
+
+                // Update project with all fields including metadata
                 final updatedProject = project.copyWith(
                   title: titleController.text,
                   description: descriptionController.text,
                   isbn: isbnController.text,
+                  productionEditor: productionEditorController.text,
+                  format: formatController.text,
                   scheduledDates: validScheduledDates,
                   deadline: deadline,
                   updatedAt: DateTime.now(),
+                  // Metadata fields
+                  imprint: imprint,
+                  printerDate: printerDate,
+                  scDate: scDate,
+                  pubDate: pubDate,
+                  notes: notes,
+                  ukCoPub: ukCoPubController.text.trim(),
+                  pageCountSent: pageCountSent,
                 );
 
                 Navigator.pop(context);
@@ -1322,5 +1443,230 @@ class _ProjectScreenState extends State<ProjectScreen> {
         );
       }
     }
+  }
+  
+  // Method to build the metadata section
+  Widget _buildMetadataSection({
+    required ProjectModel project,
+    required BuildContext context,
+    required StateSetter setState,
+    required TextEditingController imprintController,
+    required TextEditingController notesController,
+    required TextEditingController printerDateController,
+    required TextEditingController scDateController,
+    required TextEditingController pubDateController,
+    required TextEditingController ukCoPubController,
+    required bool pageCountSent,
+    required Function(bool?) onPageCountSentChanged,
+  }) {
+    
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Row 1: Imprint
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Imprint:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: imprintController,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter imprint',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                        onChanged: (value) {
+                          // We'll handle this in the Save button
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Row 2: Dates
+          Row(
+            children: [
+              // Printer Date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Printer Date:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: printerDateController,
+                        decoration: const InputDecoration(
+                          hintText: 'MM/DD/YYYY',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // S.C. Date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'S.C. Date:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: scDateController,
+                        decoration: const InputDecoration(
+                          hintText: 'MM/DD/YYYY',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+              
+              // Pub Date
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pub Date:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: pubDateController,
+                        decoration: const InputDecoration(
+                          hintText: 'MM/DD/YYYY',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Row 3: Notes
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Notes:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 60,
+                      child: TextField(
+                        controller: notesController,
+                        decoration: const InputDecoration(
+                          hintText: 'Additional notes',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        ),
+                        maxLines: 2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Row 4: Checkboxes
+          Row(
+            children: [
+              // UK co-pub field
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'UK co-pub:',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 4),
+                    SizedBox(
+                      height: 40,
+                      child: TextField(
+                        controller: ukCoPubController,
+                        decoration: const InputDecoration(
+                          hintText: 'UK co-publication details',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Page Count Sent checkbox
+              Expanded(
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: pageCountSent,
+                      onChanged: onPageCountSentChanged,
+                    ),
+                    const Text('Page Count Sent?'),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
