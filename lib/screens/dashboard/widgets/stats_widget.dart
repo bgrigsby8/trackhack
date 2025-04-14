@@ -34,17 +34,13 @@ class StatsWidget extends StatelessWidget {
     final upcomingDeadlines = projects
         .where((p) =>
             p.deadline.isAfter(now) &&
-            p.deadline.difference(now).inDays <= 7 &&
-            p.mainStatus != ProjectMainStatus.other || 
-            (p.mainStatus == ProjectMainStatus.other && p.subStatus != 'published'))
+            p.deadline.difference(now).inDays <= 7)
         .toList()
       ..sort((a, b) => a.deadline.compareTo(b.deadline));
 
     final missedDeadlines = projects
         .where((p) =>
-            p.deadline.isBefore(now) &&
-            p.mainStatus != ProjectMainStatus.other || 
-            (p.mainStatus == ProjectMainStatus.other && p.subStatus != 'published'))
+            p.deadline.isBefore(now))
         .length;
 
     return Column(

@@ -25,7 +25,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
     ProjectMainStatus.paging: false,
     ProjectMainStatus.proofing: false,
     ProjectMainStatus.epub: false,
-    ProjectMainStatus.other: false,
   };
 
   @override
@@ -129,9 +128,46 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      project.title,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            project.title,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                        ),
+                        // Show completion badge if project is completed
+                        if (project.isCompleted)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: Colors.green),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                  size: 16,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'COMPLETED',
+                                  style: TextStyle(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -173,10 +209,15 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     color: Colors.grey,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    'Deadline: ${_formatDate(project.deadline)}',
-                    style: const TextStyle(color: Colors.grey),
-                  ),
+                  project.isCompleted
+                      ? Text(
+                          'Completed: ${_formatDate(project.completedAt!)}',
+                          style: const TextStyle(color: Colors.green),
+                        )
+                      : Text(
+                          'Deadline: ${_formatDate(project.deadline)}',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
                 ],
               ),
               Row(
@@ -216,8 +257,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
               'Proofing Phase', Colors.orange, project),
           _buildStatusSection(context, ProjectMainStatus.epub, 'E-book Phase',
               Colors.green, project),
-          _buildStatusSection(context, ProjectMainStatus.other,
-              'Other Statuses', Colors.grey, project),
         ],
       ),
     );
@@ -413,17 +452,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 : _formatPlannedDate(subStatusValue,
                     project), // Show planned date if not completed
             style: TextStyle(
-              color: hasDate
-                  ? Colors.grey[600]
-                  : Colors.grey[400], // Lighter color for planned dates
-              fontSize: 14, // Increased from 12 to 14 for better readability
-              fontStyle: hasDate
-                  ? FontStyle.normal
-                  : FontStyle.italic, // Italics for planned dates
-              fontWeight: hasDate
-                  ? FontWeight.w500 
-                  : FontWeight.normal // Slightly bolder for completed dates
-            ),
+                color: hasDate
+                    ? Colors.grey[600]
+                    : Colors.grey[400], // Lighter color for planned dates
+                fontSize: 14, // Increased from 12 to 14 for better readability
+                fontStyle: hasDate
+                    ? FontStyle.normal
+                    : FontStyle.italic, // Italics for planned dates
+                fontWeight: hasDate
+                    ? FontWeight.w500
+                    : FontWeight.normal // Slightly bolder for completed dates
+                ),
           ),
         ],
       ),
@@ -440,8 +479,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
         return Colors.orange;
       case ProjectMainStatus.epub:
         return Colors.green;
-      case ProjectMainStatus.other:
-        return Colors.grey;
     }
   }
 
@@ -472,9 +509,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   void _showEditProjectDialog(BuildContext context, ProjectModel project) {
-    final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
+    final projectProvider =
+        Provider.of<ProjectProvider>(context, listen: false);
     final titleController = TextEditingController(text: project.title);
-    final descriptionController = TextEditingController(text: project.description);
+    final descriptionController =
+        TextEditingController(text: project.description);
     final isbnController = TextEditingController(text: project.isbn);
     final deadlineController = TextEditingController(
       text: _formatDate(project.deadline),
@@ -551,7 +590,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (titleController.text.isEmpty || 
+              if (titleController.text.isEmpty ||
                   descriptionController.text.isEmpty ||
                   isbnController.text.isEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -696,13 +735,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
   }
 
   // Update the project's status (main and sub-status)
-  Future<void> _updateProjectStatus(
-    BuildContext context,
-    ProjectModel project,
-    ProjectMainStatus newMainStatus,
-    String newSubStatus,
-    {bool skipValidation = false}
-  ) async {
+  Future<void> _updateProjectStatus(BuildContext context, ProjectModel project,
+      ProjectMainStatus newMainStatus, String newSubStatus,
+      {bool skipValidation = false}) async {
     final projectProvider =
         Provider.of<ProjectProvider>(context, listen: false);
 
@@ -723,7 +758,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
         // Don't allow moving to a new main status if current one has incomplete steps
         // Skip this validation if skipValidation is true (for automatic advancement)
-        if (!skipValidation && !allCurrentCompleted &&
+        if (!skipValidation &&
+            !allCurrentCompleted &&
             ProjectMainStatus.values.indexOf(newMainStatus) >
                 ProjectMainStatus.values.indexOf(project.mainStatus)) {
           if (mounted) {
@@ -753,7 +789,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         if (!skipValidation) {
           // Only allow sequential or backward movement if all previous steps are completed
           bool canMove = true;
-  
+
           if (newIndex > currentIndex) {
             // Moving forward - check if all previous substatus items are completed
             for (int i = 0; i <= currentIndex; i++) {
@@ -763,7 +799,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
               }
             }
           }
-  
+
           if (!canMove) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -889,10 +925,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
       if (isComplete) {
         final subStatuses =
             ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
-        
+
         // Check if we just completed the very last step in the phase
         bool isLastStepInPhase = subStatus == subStatuses.last['value'];
-        
+
         // Check if all other steps are completed too
         bool allOtherStepsCompleted = true;
         for (final ss in subStatuses) {
@@ -902,27 +938,24 @@ class _ProjectScreenState extends State<ProjectScreen> {
             break;
           }
         }
-        
+
         // If we just completed the last step and all others are done, automatically advance to next phase
         if (isLastStepInPhase && allOtherStepsCompleted && mounted) {
           final int currentIndex =
               ProjectMainStatus.values.indexOf(project.mainStatus);
-          
+
           // Check if there's a next phase to move to
           if (currentIndex < ProjectMainStatus.values.length - 1) {
             final nextMainStatus = ProjectMainStatus.values[currentIndex + 1];
-            
+
             // Get the first step of the next phase
             final nextPhaseSubStatuses =
                 ProjectModel.getSubStatusesForMainStatus(nextMainStatus);
-            
+
             if (nextPhaseSubStatuses.isNotEmpty) {
-              final String nextPhaseFirstStep = nextPhaseSubStatuses[0]['value']!;
-              
-              // Capture phase names before making any changes
-              final currentPhaseName = _getMainStatusName(project.mainStatus);
-              final nextPhaseName = _getMainStatusName(nextMainStatus);
-              
+              final String nextPhaseFirstStep =
+                  nextPhaseSubStatuses[0]['value']!;
+
               // Short delay to allow the current update to complete
               Future.delayed(const Duration(milliseconds: 500), () async {
                 try {
@@ -932,22 +965,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     project,
                     nextMainStatus,
                     nextPhaseFirstStep,
-                    skipValidation: true, // Skip sequence validation since we're auto-advancing
+                    skipValidation:
+                        true, // Skip sequence validation since we're auto-advancing
                   );
-                  
-                  // Show a notification about the automatic phase advancement
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          '$currentPhaseName phase completed! '
-                          'Advanced to $nextPhaseName phase.',
-                        ),
-                        backgroundColor: Colors.green,
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                  }
                 } catch (e) {
                   // Handle errors from phase advancement
                   if (mounted) {
@@ -965,10 +985,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
             // This was the final phase
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('All project phases completed! 🎉'),
+                const SnackBar(
+                  content: Text('All project phases completed! 🎉'),
                   backgroundColor: Colors.green,
-                  duration: const Duration(seconds: 3),
+                  duration: Duration(seconds: 3),
                 ),
               );
             }
@@ -984,21 +1004,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
         );
       }
-    }
-  }
-
-  String _getMainStatusName(ProjectMainStatus status) {
-    switch (status) {
-      case ProjectMainStatus.design:
-        return 'Design';
-      case ProjectMainStatus.paging:
-        return 'Paging';
-      case ProjectMainStatus.proofing:
-        return 'Proofing';
-      case ProjectMainStatus.epub:
-        return 'E-Pub';
-      case ProjectMainStatus.other:
-        return 'Other';
     }
   }
 }

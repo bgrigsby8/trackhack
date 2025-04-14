@@ -39,8 +39,6 @@ class AppHelpers {
         return Colors.orange;
       case ProjectMainStatus.epub:
         return Colors.green;
-      case ProjectMainStatus.other:
-        return Colors.grey;
     }
   }
 

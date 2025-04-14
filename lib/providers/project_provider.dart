@@ -179,12 +179,29 @@ class ProjectProvider with ChangeNotifier {
       }
 
       // Create updated project - only change the current subStatus if none was specified
-      final updatedProject = _projects[projectIndex].copyWith(
+      var updatedProject = _projects[projectIndex].copyWith(
         // Only update subStatus if no specific subStatus was provided
         subStatus: subStatus == null ? newSubStatus : _projects[projectIndex].subStatus,
         statusDates: statusDates,
         updatedAt: DateTime.now(),
       );
+      
+      // Check if the project's completion status should change
+      if (!updatedProject.isCompleted && updatedProject.shouldBeMarkedAsCompleted()) {
+        // Mark as completed if all tasks in the last phase are completed
+        final now = DateTime.now();
+        updatedProject = updatedProject.copyWith(
+          isCompleted: true,
+          completedAt: now,
+        );
+      } else if (updatedProject.isCompleted && !updatedProject.shouldBeMarkedAsCompleted()) {
+        // If project was marked as completed before but now has incomplete tasks,
+        // move it back to normal status
+        updatedProject = updatedProject.copyWith(
+          isCompleted: false,
+          completedAt: null,
+        );
+      }
 
       // Update in Firestore
       await _projectService.updateProject(updatedProject);
@@ -202,6 +219,12 @@ class ProjectProvider with ChangeNotifier {
       _error = e.toString();
       notifyListeners();
     }
+  }
+  
+  // Get completed projects
+  List<ProjectModel> getCompletedProjects() {
+    return _projects.where((project) => project.isCompleted).toList()
+      ..sort((a, b) => b.completedAt!.compareTo(a.completedAt!)); // Most recently completed first
   }
 
   // Delete a project

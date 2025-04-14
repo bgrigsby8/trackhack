@@ -23,8 +23,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     'Paging': true,
     'Proofing': true,
     'EPUB': true, // Added EPUB column
-    'Other': true,
   };
+  
+  // State for completed books section
+  bool _showCompletedBooks = false;
 
   @override
   void initState() {
@@ -96,9 +98,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
             )
           else if (projectProvider.projects.isEmpty)
             _buildEmptyProjectsView(context)
-          else
+          else 
             Expanded(
-              child: _buildProjectsGrid(context, projectProvider),
+              child: Column(
+                children: [
+                  // Completed books expandable section
+                  _buildCompletedBooksSection(context, projectProvider),
+                  // Main kanban board
+                  Expanded(
+                    child: _buildProjectsGrid(context, projectProvider),
+                  ),
+                ],
+              ),
             ),
         ],
       ),
@@ -123,6 +134,121 @@ class _DashboardScreenState extends State<DashboardScreen> {
             _searchQuery = value;
           });
         },
+      ),
+    );
+  }
+  
+  Widget _buildCompletedBooksSection(BuildContext context, ProjectProvider projectProvider) {
+    final completedProjects = projectProvider.getCompletedProjects();
+    
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        children: [
+          // Header with expand/collapse button
+          InkWell(
+            onTap: () => setState(() => _showCompletedBooks = !_showCompletedBooks),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(
+                    _showCompletedBooks 
+                        ? Icons.keyboard_arrow_down 
+                        : Icons.keyboard_arrow_right,
+                    color: Colors.green,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Completed Books',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${completedProjects.length}',
+                      style: const TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          // Expanded content when showCompletedBooks is true
+          if (_showCompletedBooks)
+            completedProjects.isEmpty
+              ? Container(
+                  padding: const EdgeInsets.all(16),
+                  alignment: Alignment.center,
+                  child: Column(
+                    children: [
+                      const Icon(
+                        Icons.local_library,
+                        size: 48,
+                        color: Colors.grey,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No completed books yet',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Books will appear here when all steps in the EPUB phase are completed',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade500,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: completedProjects.length,
+                  itemBuilder: (context, index) {
+                    final project = completedProjects[index];
+                    return ListTile(
+                      title: Text(project.title),
+                      subtitle: Row(
+                        children: [
+                          const Icon(Icons.book, size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text('ISBN: ${project.isbn}'),
+                          const SizedBox(width: 16),
+                          const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text('Completed: ${_formatDate(project.completedAt!)}'),
+                        ],
+                      ),
+                      trailing: const Icon(Icons.check_circle, color: Colors.green),
+                      onTap: () => _navigateToProject(context, project),
+                    );
+                  },
+                ),
+        ],
       ),
     );
   }
@@ -163,8 +289,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildProjectsGrid(
       BuildContext context, ProjectProvider projectProvider) {
     final filteredProjects = _filterProjects(projectProvider.projects);
-    print("Filtered projects: $filteredProjects");
-    print("Search query: $_searchQuery");
 
     if (filteredProjects.isEmpty) {
       return Center(
@@ -193,32 +317,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     // Group projects by the main Kanban categories and sort according to column's setting
+    // Exclude completed projects from the main columns
+    final incompleteProjects = filteredProjects.where((p) => !p.isCompleted).toList();
+    
     final Map<String, List<ProjectModel>> kanbanColumns = {
       'Design': _getSortedProjects(
-          filteredProjects
+          incompleteProjects
               .where((p) => p.mainStatus == ProjectMainStatus.design)
               .toList(),
           'Design'),
       'Paging': _getSortedProjects(
-          filteredProjects
+          incompleteProjects
               .where((p) => p.mainStatus == ProjectMainStatus.paging)
               .toList(),
           'Paging'),
       'Proofing': _getSortedProjects(
-          filteredProjects
+          incompleteProjects
               .where((p) => p.mainStatus == ProjectMainStatus.proofing)
               .toList(),
           'Proofing'),
       'EPUB': _getSortedProjects(
-          filteredProjects
+          incompleteProjects
               .where((p) => p.mainStatus == ProjectMainStatus.epub)
               .toList(),
           'EPUB'),
-      'Other': _getSortedProjects(
-          filteredProjects
-              .where((p) => p.mainStatus == ProjectMainStatus.other)
-              .toList(),
-          'Other'),
     };
 
     return Row(
@@ -421,11 +543,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                project.title,
-                style: theme.textTheme.titleMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      project.title,
+                      style: theme.textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // Show completion indicator if the project is completed
+                  if (project.isCompleted)
+                    const Padding(
+                      padding: EdgeInsets.only(left: 4),
+                      child: Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 18,
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(height: 4),
               Text(
@@ -457,26 +596,42 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Chip(
-                    backgroundColor:
-                        AppHelpers.getProjectStatusColor(project.mainStatus)
-                            .withValues(alpha: 0.2),
-                    label: Text(
-                      project.statusLabel,
-                      style: TextStyle(
-                        color: AppHelpers.getProjectStatusColor(
-                            project.mainStatus),
-                        fontSize: 12,
-                      ),
-                    ),
-                    padding: EdgeInsets.zero,
-                    labelPadding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    side: BorderSide.none,
-                  ),
+                  // Show status chip
+                  project.isCompleted
+                      ? Chip(
+                          backgroundColor: Colors.green.withValues(alpha: 0.2),
+                          label: const Text(
+                            'Completed',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                            ),
+                          ),
+                          padding: EdgeInsets.zero,
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          side: BorderSide.none,
+                        )
+                      : Chip(
+                          backgroundColor: AppHelpers.getProjectStatusColor(project.mainStatus)
+                              .withValues(alpha: 0.2),
+                          label: Text(
+                            project.statusLabel,
+                            style: TextStyle(
+                              color: AppHelpers.getProjectStatusColor(project.mainStatus),
+                              fontSize: 12,
+                            ),
+                          ),
+                          padding: EdgeInsets.zero,
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          side: BorderSide.none,
+                        ),
+                  // Show due date or completion date
                   Text(
-                    'Due: ${_formatDate(project.deadline)}',
+                    project.isCompleted
+                        ? 'Completed: ${_formatDate(project.completedAt!)}'
+                        : 'Due: ${_formatDate(project.deadline)}',
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -513,15 +668,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'EPUB':
         newMainStatus = ProjectMainStatus.epub;
         defaultSubStatus = 'initial'; // Default sub-status for EPUB
-        break;
-      case 'Other':
-        // Keep the same status if moving within "Other"
-        if (project.mainStatus == ProjectMainStatus.other) {
-          return;
-        }
-        // If moving from another column to "Other", set to "Not Transmitted"
-        newMainStatus = ProjectMainStatus.other;
-        defaultSubStatus = 'notTransmitted';
         break;
     }
 
@@ -561,23 +707,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return Colors.orange;
       case 'EPUB':
         return Colors.green;
-      case 'Other':
-        return Colors.grey;
       default:
         return Colors.blueGrey;
     }
   }
 
   List<ProjectModel> _filterProjects(List<ProjectModel> projects) {
-    return projects.where((project) {
-      // Apply search filter only (removed main status filter)
-      return _searchQuery.isEmpty ||
-          project.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          project.description
-              .toLowerCase()
-              .contains(_searchQuery.toLowerCase()) ||
-          project.isbn.contains(_searchQuery);
-    }).toList();
+    // If there's a search query, return all projects matching the search including completed ones
+    if (_searchQuery.isNotEmpty) {
+      return projects.where((project) {
+        return project.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            project.description.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+            project.isbn.toLowerCase().contains(_searchQuery.toLowerCase());
+      }).toList();
+    }
+    
+    // If no search query, return all projects (including completed ones)
+    // Completed ones will be shown in the Completed section but filtered from main columns
+    return projects;
   }
 
   String _formatDate(DateTime date) {
@@ -665,10 +812,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     setupDateControllers(ProjectModel.pagingSubStatuses, pagingStartDate);
     setupDateControllers(ProjectModel.proofingSubStatuses, proofingStartDate);
     setupDateControllers(ProjectModel.epubSubStatuses, epubStartDate);
-
-    // Other statuses at the end
-    setupDateControllers(ProjectModel.otherSubStatuses,
-        epubStartDate.add(const Duration(days: 14)));
 
     // Helper function to validate and parse data
     DateTime? parseDateMMDDYYYY(String input) {

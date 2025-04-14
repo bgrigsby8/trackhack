@@ -7,7 +7,6 @@ enum ProjectMainStatus {
   paging, // Paging/layout phase
   proofing, // Proofing/editing phase
   epub, // E-book preparation phase
-  other, // Other phases (not in one of the main kanban columns)
 }
 
 // For future implementation: Sub-statuses for Design
@@ -40,14 +39,6 @@ enum EPubSubStatus {
   sentDAD, // Sent to DAD
 }
 
-// Others for the "Other" main status category
-enum OtherStatus {
-  notTransmitted, // Not yet started
-  press, // At the press
-  epub, // E-book preparation
-  published, // Published
-}
-
 class ProjectModel {
   final String id;
   final String title;
@@ -61,6 +52,8 @@ class ProjectModel {
   final String ownerId;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isCompleted; // Flag to indicate if the project is completed
+  final DateTime? completedAt; // Date when the project was completed
 
   ProjectModel({
     required this.id,
@@ -75,6 +68,8 @@ class ProjectModel {
     required this.ownerId,
     required this.createdAt,
     required this.updatedAt,
+    this.isCompleted = false,
+    this.completedAt,
   }) : statusDates = statusDates ?? {};
 
   Map<String, dynamic> toMap() {
@@ -97,6 +92,8 @@ class ProjectModel {
       'ownerId': ownerId,
       'createdAt': createdAt.millisecondsSinceEpoch,
       'updatedAt': updatedAt.millisecondsSinceEpoch,
+      'isCompleted': isCompleted,
+      'completedAt': completedAt?.millisecondsSinceEpoch,
     };
   }
 
@@ -107,6 +104,11 @@ class ProjectModel {
       (map['statusDates'] as Map<String, dynamic>).forEach((key, value) {
         dateMap[key] = DateTime.fromMillisecondsSinceEpoch(value as int);
       });
+    }
+
+    DateTime? completedAt;
+    if (map['completedAt'] != null) {
+      completedAt = DateTime.fromMillisecondsSinceEpoch(map['completedAt'] as int);
     }
 
     var test = ProjectModel(
@@ -122,6 +124,8 @@ class ProjectModel {
       ownerId: map['ownerId'] as String,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['createdAt'] as int),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(map['updatedAt'] as int),
+      isCompleted: map['isCompleted'] as bool? ?? false,
+      completedAt: completedAt,
     );
 
     return test;
@@ -131,7 +135,7 @@ class ProjectModel {
   static ProjectMainStatus convertOldStatusToMainStatus(int oldStatusIndex) {
     switch (oldStatusIndex) {
       case 0: // notTransmitted
-        return ProjectMainStatus.other;
+        return ProjectMainStatus.design;
       case 1: // inDesign
         return ProjectMainStatus.design;
       case 2: // paging
@@ -141,7 +145,7 @@ class ProjectModel {
       case 4: // epub
         return ProjectMainStatus.epub;
       default:
-        return ProjectMainStatus.other;
+        return ProjectMainStatus.design;
     }
   }
 
@@ -158,6 +162,8 @@ class ProjectModel {
     String? ownerId,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isCompleted,
+    DateTime? completedAt,
   }) {
     return ProjectModel(
       id: id ?? this.id,
@@ -172,6 +178,8 @@ class ProjectModel {
       ownerId: ownerId ?? this.ownerId,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isCompleted: isCompleted ?? this.isCompleted,
+      completedAt: completedAt ?? this.completedAt,
     );
   }
 
@@ -186,8 +194,6 @@ class ProjectModel {
         return _getPagingStatusLabel();
       case ProjectMainStatus.epub:
         return _getEPubStatusLabel();
-      case ProjectMainStatus.other:
-        return subStatus;
     }
   }
 
@@ -289,6 +295,30 @@ class ProjectModel {
         return 'E-Pub';
     }
   }
+  
+  // Check if this project should be marked as completed
+  // A project is completed when all steps in the final phase (epub) are completed
+  bool shouldBeMarkedAsCompleted() {
+    // If already marked completed, don't need to check again
+    if (isCompleted) return true;
+    
+    // Only consider projects in the last phase (E-Pub)
+    if (mainStatus != ProjectMainStatus.epub) return false;
+    
+    // Get all steps for the E-Pub phase
+    final steps = epubSubStatuses;
+    
+    // Check if all steps are completed
+    for (final step in steps) {
+      final stepKey = step['value']!;
+      if (!statusDates.containsKey(stepKey)) {
+        return false; // Found an incomplete step
+      }
+    }
+    
+    // All steps in the final phase are completed
+    return true;
+  }
 
   // Get the date for a specific sub-status
   DateTime? getDateForSubStatus(String subStatus) {
@@ -349,8 +379,6 @@ class ProjectModel {
         return Colors.orange;
       case ProjectMainStatus.epub:
         return Colors.green;
-      case ProjectMainStatus.other:
-        return Colors.grey;
     }
   }
 
@@ -396,13 +424,6 @@ class ProjectModel {
     ];
   }
 
-  // Get other sub-statuses
-  static List<Map<String, String>> get otherSubStatuses {
-    return [
-      {'value': 'other_nottransmitted', 'label': 'Not Transmitted'},
-    ];
-  }
-
   // Get sub-statuses for a specific main status
   static List<Map<String, String>> getSubStatusesForMainStatus(
       ProjectMainStatus mainStatus) {
@@ -415,8 +436,6 @@ class ProjectModel {
         return proofingSubStatuses;
       case ProjectMainStatus.epub:
         return epubSubStatuses;
-      case ProjectMainStatus.other:
-        return otherSubStatuses;
     }
   }
 }
