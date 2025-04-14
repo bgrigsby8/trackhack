@@ -64,9 +64,8 @@ class ProjectCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppHelpers.getProjectStatusColor(project.status),
-            AppHelpers.getProjectStatusColor(project.status)
-                .withValues(alpha: 0.7),
+            project.getMainStatusColor(),
+            project.getMainStatusColor().withValues(alpha: 0.7),
           ],
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
@@ -84,12 +83,12 @@ class ProjectCard extends StatelessWidget {
       children: [
         // Status chip
         Chip(
-          backgroundColor: AppHelpers.getProjectStatusColor(project.status)
+          backgroundColor: project.getMainStatusColor()
               .withValues(alpha: 0.2),
           label: Text(
             project.statusLabel,
             style: TextStyle(
-              color: AppHelpers.getProjectStatusColor(project.status),
+              color: project.getMainStatusColor(),
               fontWeight: FontWeight.bold,
             ),
           ),

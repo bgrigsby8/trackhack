@@ -6,7 +6,6 @@ import '../../providers/project_provider.dart';
 import '../../models/project_model.dart';
 import '../../utils/helpers.dart';
 import '../project/project_screen.dart';
-import 'widgets/stats_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -17,13 +16,25 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   String _searchQuery = '';
-  ProjectStatus? _filterStatus;
+  // Map to track sorting direction for each column
+  // true = newest first (default), false = oldest first
+  Map<String, bool> _columnSortDirections = {
+    'Design': true,
+    'Paging': true,
+    'Proofing': true,
+    'EPUB': true, // Added EPUB column
+    'Other': true,
+  };
 
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final projectProvider =
           Provider.of<ProjectProvider>(context, listen: false);
@@ -40,6 +51,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final projectProvider = Provider.of<ProjectProvider>(context);
     final user = authProvider.user;
 
+    // Ensure projects are loaded if user exists but projects are empty
+    if (user != null &&
+        !projectProvider.loading &&
+        projectProvider.projects.isEmpty) {
+      // Use a post-frame callback to avoid setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          projectProvider.loadUserProjects(user.id);
+        }
+      });
+    }
+
     if (user == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -48,7 +71,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('TrackHack'),
+        title: const Text(
+          'TrackHack',
+          style: TextStyle(fontSize: 25),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.account_circle),
@@ -63,7 +89,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildWelcomeHeader(context, user.name),
           _buildSearchAndFilter(context),
           if (projectProvider.loading)
             const Expanded(
@@ -84,104 +109,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildWelcomeHeader(BuildContext context, String userName) {
-    final theme = Theme.of(context);
-    final primary = theme.colorScheme.primary;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      color: primary.withValues(alpha: 0.7),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome, $userName',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 16),
-          const StatsWidget(),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSearchAndFilter(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          TextField(
-            decoration: const InputDecoration(
-              hintText: 'Search projects...',
-              prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(),
-            ),
-            onChanged: (value) {
-              setState(() {
-                _searchQuery = value;
-              });
-            },
-          ),
-          const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                const Text('Filter: '),
-                const SizedBox(width: 8),
-                _buildFilterChip(
-                  context,
-                  label: 'All',
-                  selected: _filterStatus == null,
-                  onSelected: (_) {
-                    setState(() {
-                      _filterStatus = null;
-                    });
-                  },
-                ),
-                for (final status in ProjectStatus.values)
-                  _buildFilterChip(
-                    context,
-                    label: _getStatusLabel(status),
-                    selected: _filterStatus == status,
-                    color: AppHelpers.getProjectStatusColor(status),
-                    onSelected: (_) {
-                      setState(() {
-                        _filterStatus = status;
-                      });
-                    },
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(
-    BuildContext context, {
-    required String label,
-    required bool selected,
-    required Function(bool) onSelected,
-    Color? color,
-  }) {
-    final theme = Theme.of(context);
-    final backgroundColor =
-        color?.withValues(alpha: 0.2) ?? theme.chipTheme.backgroundColor;
-
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: selected,
-        onSelected: onSelected,
-        backgroundColor: backgroundColor,
-        selectedColor: color ?? theme.colorScheme.primary,
-        labelStyle: TextStyle(
-          color: selected ? Colors.white : null,
+      child: TextField(
+        decoration: const InputDecoration(
+          hintText: 'Search projects...',
+          prefixIcon: Icon(Icons.search),
+          border: OutlineInputBorder(),
         ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
       ),
     );
   }
@@ -240,7 +181,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () {
                 setState(() {
                   _searchQuery = '';
-                  _filterStatus = null;
                 });
               },
               child: const Text('Clear filters'),
@@ -250,23 +190,33 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    // Group projects by the main Kanban categories
+    // Group projects by the main Kanban categories and sort according to column's setting
     final Map<String, List<ProjectModel>> kanbanColumns = {
-      'Design': filteredProjects
-          .where((p) => p.status == ProjectStatus.inDesign)
-          .toList(),
-      'Paging': filteredProjects
-          .where((p) => p.status == ProjectStatus.paging)
-          .toList(),
-      'Proofing': filteredProjects
-          .where((p) => p.status == ProjectStatus.proofing)
-          .toList(),
-      'Other': filteredProjects
-          .where((p) =>
-              p.status != ProjectStatus.inDesign &&
-              p.status != ProjectStatus.paging &&
-              p.status != ProjectStatus.proofing)
-          .toList(),
+      'Design': _getSortedProjects(
+          filteredProjects
+              .where((p) => p.mainStatus == ProjectMainStatus.design)
+              .toList(),
+          'Design'),
+      'Paging': _getSortedProjects(
+          filteredProjects
+              .where((p) => p.mainStatus == ProjectMainStatus.paging)
+              .toList(),
+          'Paging'),
+      'Proofing': _getSortedProjects(
+          filteredProjects
+              .where((p) => p.mainStatus == ProjectMainStatus.proofing)
+              .toList(),
+          'Proofing'),
+      'EPUB': _getSortedProjects(
+          filteredProjects
+              .where((p) => p.mainStatus == ProjectMainStatus.epub)
+              .toList(),
+          'EPUB'),
+      'Other': _getSortedProjects(
+          filteredProjects
+              .where((p) => p.mainStatus == ProjectMainStatus.other)
+              .toList(),
+          'Other'),
     };
 
     return Row(
@@ -317,12 +267,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  title,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: _getColumnHeaderColor(title),
-                  ),
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: _getColumnHeaderColor(title),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    // Sort toggle button
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          // Toggle sort direction for this column
+                          _columnSortDirections[title] =
+                              !_columnSortDirections[title]!;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4.0),
+                        child: Icon(
+                          _columnSortDirections[title]!
+                              ? Icons.arrow_downward
+                              : Icons.arrow_upward,
+                          size: 16,
+                          color: _getColumnHeaderColor(title),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 Container(
                   padding:
@@ -396,6 +372,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         final project = projects[index];
                         return LongPressDraggable<ProjectModel>(
                           data: project,
+                          delay: const Duration(milliseconds: 500),
                           feedback: Material(
                             elevation: 4.0,
                             child: Container(
@@ -461,12 +438,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Chip(
                     backgroundColor:
-                        AppHelpers.getProjectStatusColor(project.status)
+                        AppHelpers.getProjectStatusColor(project.mainStatus)
                             .withValues(alpha: 0.2),
                     label: Text(
                       project.statusLabel,
                       style: TextStyle(
-                        color: AppHelpers.getProjectStatusColor(project.status),
+                        color: AppHelpers.getProjectStatusColor(
+                            project.mainStatus),
                         fontSize: 12,
                       ),
                     ),
@@ -492,34 +470,43 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final projectProvider =
         Provider.of<ProjectProvider>(context, listen: false);
 
-    // Based on the column, determine the new status
-    ProjectStatus? newStatus;
+    // Based on the column, determine the new main status and default sub-status
+    ProjectMainStatus? newMainStatus;
+    String defaultSubStatus = '';
 
     switch (columnTitle) {
       case 'Design':
-        newStatus = ProjectStatus.inDesign;
+        newMainStatus = ProjectMainStatus.design;
+        defaultSubStatus = 'initial'; // Using the first sub-status for design
         break;
       case 'Paging':
-        newStatus = ProjectStatus.paging;
+        newMainStatus = ProjectMainStatus.paging;
+        defaultSubStatus = 'initial'; // Using the first sub-status for paging
         break;
       case 'Proofing':
-        newStatus = ProjectStatus.proofing;
+        newMainStatus = ProjectMainStatus.proofing;
+        defaultSubStatus =
+            'firstPass'; // Using the first proofing sub-status (1P)
+        break;
+      case 'EPUB':
+        newMainStatus = ProjectMainStatus.epub;
+        defaultSubStatus = 'initial'; // Default sub-status for EPUB
         break;
       case 'Other':
         // Keep the same status if moving within "Other"
-        if (project.status != ProjectStatus.inDesign &&
-            project.status != ProjectStatus.paging &&
-            project.status != ProjectStatus.proofing) {
+        if (project.mainStatus == ProjectMainStatus.other) {
           return;
         }
         // If moving from another column to "Other", set to "Not Transmitted"
-        newStatus = ProjectStatus.notTransmitted;
+        newMainStatus = ProjectMainStatus.other;
+        defaultSubStatus = 'notTransmitted';
         break;
     }
 
-    if (newStatus != null && newStatus != project.status) {
+    if (newMainStatus != null && newMainStatus != project.mainStatus) {
       try {
-        await projectProvider.updateProjectStatus(project.id, newStatus);
+        await projectProvider.updateProjectMainStatus(
+            project.id, newMainStatus, defaultSubStatus);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -550,6 +537,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
         return Colors.blue;
       case 'Proofing':
         return Colors.orange;
+      case 'EPUB':
+        return Colors.green;
       case 'Other':
         return Colors.grey;
       default:
@@ -559,42 +548,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   List<ProjectModel> _filterProjects(List<ProjectModel> projects) {
     return projects.where((project) {
-      // Apply search filter
-      final matchesSearch = _searchQuery.isEmpty ||
+      // Apply search filter only (removed main status filter)
+      return _searchQuery.isEmpty ||
           project.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           project.description
               .toLowerCase()
               .contains(_searchQuery.toLowerCase());
-
-      // Apply status filter
-      final matchesStatus =
-          _filterStatus == null || project.status == _filterStatus;
-
-      return matchesSearch && matchesStatus;
     }).toList();
   }
 
-  String _getStatusLabel(ProjectStatus status) {
+  String _getMainStatusLabel(ProjectMainStatus status) {
     switch (status) {
-      case ProjectStatus.notTransmitted:
-        return 'Not Transmitted';
-      case ProjectStatus.inDesign:
-        return 'In Design';
-      case ProjectStatus.paging:
+      case ProjectMainStatus.design:
+        return 'Design';
+      case ProjectMainStatus.paging:
         return 'Paging';
-      case ProjectStatus.proofing:
+      case ProjectMainStatus.proofing:
         return 'Proofing';
-      case ProjectStatus.press:
-        return 'At Press';
-      case ProjectStatus.epub:
-        return 'Epub';
-      case ProjectStatus.published:
-        return 'Published';
+      case ProjectMainStatus.epub:
+        return 'EPUB';
+      case ProjectMainStatus.other:
+        return 'Other';
+    }
+  }
+
+  Color _getMainStatusColor(ProjectMainStatus status) {
+    switch (status) {
+      case ProjectMainStatus.design:
+        return Colors.purple;
+      case ProjectMainStatus.paging:
+        return Colors.blue;
+      case ProjectMainStatus.proofing:
+        return Colors.orange;
+      case ProjectMainStatus.epub:
+        return Colors.green;
+      case ProjectMainStatus.other:
+        return Colors.grey;
     }
   }
 
   String _formatDate(DateTime date) {
     return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  }
+
+  String _formatDateMMDDYYYY(DateTime date) {
+    return '${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}/${date.year}';
+  }
+
+  // Helper method to sort projects based on column's sort direction
+  List<ProjectModel> _getSortedProjects(
+      List<ProjectModel> projects, String columnTitle) {
+    final sortNewestFirst = _columnSortDirections[columnTitle] ?? true;
+
+    // Sort by updated date
+    projects.sort((a, b) {
+      if (sortNewestFirst) {
+        // Default - newest first (descending)
+        return b.updatedAt.compareTo(a.updatedAt);
+      } else {
+        // Oldest first (ascending)
+        return a.updatedAt.compareTo(b.updatedAt);
+      }
+    });
+
+    return projects;
   }
 
   void _navigateToProject(BuildContext context, ProjectModel project) {
@@ -613,96 +630,326 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     final titleController = TextEditingController();
     final descriptionController = TextEditingController();
+    final deadlineController = TextEditingController(
+      text: _formatDateMMDDYYYY(
+        DateTime.now().add(const Duration(days: 30)),
+      ),
+    );
 
-    ProjectStatus selectedStatus = ProjectStatus.notTransmitted;
+    // Default selection values
+    ProjectMainStatus selectedMainStatus = ProjectMainStatus.other;
+    String selectedSubStatus = 'notTransmitted';
+    // ignore: unused_local_variable
     DateTime selectedDeadline = DateTime.now().add(const Duration(days: 30));
+
+    // Map to store dates for each sub-status
+    final Map<String, DateTime> statusDates = {};
+    final Map<String, TextEditingController> dateControllers = {};
+
+    // Set the current date as the default for all Proofing sub-statuses
+    final now = DateTime.now();
+    for (final subStatus in ProjectModel.proofingSubStatuses) {
+      statusDates[subStatus['value']!] = now;
+      dateControllers[subStatus['value']!] = TextEditingController(
+        text: _formatDateMMDDYYYY(now),
+      );
+    }
+
+    // Helper function to validate and parse data
+    DateTime? _parseDateMMDDYYYY(String input) {
+      // Check format MM/DD/YYYY
+      final RegExp dateRegex = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
+      final match = dateRegex.firstMatch(input);
+
+      if (match != null) {
+        final month = int.parse(match.group(1)!);
+        final day = int.parse(match.group(2)!);
+        final year = int.parse(match.group(3)!);
+
+        // Validate month and day
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          try {
+            return DateTime(year, month, day);
+          } catch (e) {
+            // Handle invalid date (e.g., February 30)
+            return null;
+          }
+        }
+      }
+      return null;
+    }
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
           title: const Text('Create New Book Project'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    hintText: 'Enter book title',
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.7,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Title',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(
-                    labelText: 'Description',
-                    hintText: 'Enter book description',
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: titleController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter book title',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                  maxLines: 3,
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<ProjectStatus>(
-                  value: selectedStatus,
-                  decoration: const InputDecoration(
-                    labelText: 'Status',
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Description',
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  items: ProjectStatus.values.map((status) {
-                    return DropdownMenuItem(
-                      value: status,
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 12,
-                            height: 12,
-                            decoration: BoxDecoration(
-                              color: AppHelpers.getProjectStatusColor(status),
-                              shape: BoxShape.circle,
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter book description',
+                      border: OutlineInputBorder(),
+                    ),
+                    maxLines: 3,
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Main Status dropdown
+                  const Text(
+                    'Main Status',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  DropdownButtonFormField<ProjectMainStatus>(
+                    value: selectedMainStatus,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                    ),
+                    items: ProjectMainStatus.values.map((status) {
+                      return DropdownMenuItem(
+                        value: status,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: _getMainStatusColor(status),
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(_getStatusLabel(status)),
-                        ],
+                            const SizedBox(width: 8),
+                            Text(_getMainStatusLabel(status)),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          selectedMainStatus = value;
+
+                          // Set appropriate default sub-status based on main status
+                          switch (value) {
+                            case ProjectMainStatus.design:
+                              selectedSubStatus = 'initial';
+                              break;
+                            case ProjectMainStatus.paging:
+                              selectedSubStatus = 'initial';
+                              break;
+                            case ProjectMainStatus.proofing:
+                              selectedSubStatus = 'firstPass';
+                              break;
+                            case ProjectMainStatus.epub:
+                              selectedSubStatus = 'sentEPub';
+                              break;
+                            case ProjectMainStatus.other:
+                              selectedSubStatus = 'notTransmitted';
+                              break;
+                          }
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Sub-Status section that changes based on main status
+                  if (selectedMainStatus == ProjectMainStatus.proofing) ...[
+                    const Text('Proofing Status:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: selectedSubStatus,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
                       ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        selectedStatus = value;
-                      });
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    const Text('Deadline: '),
-                    TextButton(
-                      onPressed: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: selectedDeadline,
-                          firstDate: DateTime.now(),
-                          lastDate:
-                              DateTime.now().add(const Duration(days: 365 * 2)),
+                      items: ProjectModel.proofingSubStatuses.map((subStatus) {
+                        return DropdownMenuItem(
+                          value: subStatus['value'],
+                          child: Text(subStatus['label']!),
                         );
-                        if (date != null && context.mounted) {
+                      }).toList(),
+                      onChanged: (value) {
+                        if (value != null) {
                           setState(() {
-                            selectedDeadline = date;
+                            selectedSubStatus = value;
                           });
                         }
                       },
-                      child: Text(
-                        _formatDate(selectedDeadline),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Status dates for proofing
+                    const Text('Status Dates:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    ...ProjectModel.proofingSubStatuses.map((subStatus) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${subStatus['label']!} Date:',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: dateControllers[subStatus['value']],
+                              decoration: const InputDecoration(
+                                hintText: 'MM/DD/YYYY',
+                                border: OutlineInputBorder(),
+                              ),
+                              onChanged: (value) {
+                                final date = _parseDateMMDDYYYY(value);
+                                if (date != null) {
+                                  setState(() {
+                                    statusDates[subStatus['value']!] = date;
+                                  });
+                                }
+                              },
+                            )
+                          ],
+                        ),
+                      );
+                    }),
+                  ] else if (selectedMainStatus ==
+                      ProjectMainStatus.design) ...[
+                    const Text('Design Status:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    // Placeholder for design sub-statuses
+                    DropdownButtonFormField<String>(
+                      value: selectedSubStatus,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
                       ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'initial',
+                          child: Text('Initial Design'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedSubStatus = value;
+                          });
+                        }
+                      },
+                    ),
+                  ] else if (selectedMainStatus ==
+                      ProjectMainStatus.paging) ...[
+                    const Text('Paging Status:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    // Placeholder for paging sub-statuses
+                    DropdownButtonFormField<String>(
+                      value: selectedSubStatus,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'initial',
+                          child: Text('Initial Paging'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedSubStatus = value;
+                          });
+                        }
+                      },
+                    ),
+                  ] else ...[
+                    const Text('Other Status:',
+                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    DropdownButtonFormField<String>(
+                      value: selectedSubStatus,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'notTransmitted',
+                          child: Text('Not Transmitted'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'press',
+                          child: Text('At Press'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'epub',
+                          child: Text('E-book'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'published',
+                          child: Text('Published'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedSubStatus = value;
+                          });
+                        }
+                      },
                     ),
                   ],
-                ),
-              ],
+
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Project Deadline',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: deadlineController,
+                    decoration: const InputDecoration(
+                      hintText: 'MM/DD/YYYY',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: (value) {
+                      final date = _parseDateMMDDYYYY(value);
+                      if (date != null) {
+                        setState(() {
+                          selectedDeadline = date;
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -722,6 +969,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return;
                 }
 
+                // Validate deadline
+                final deadline = _parseDateMMDDYYYY(deadlineController.text);
+                if (deadline == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Invalid date format. Use MM/DD/YYYY'),
+                    ),
+                  );
+                  return;
+                }
+
+                // Validate status dates if needed
+                if (selectedMainStatus == ProjectMainStatus.proofing) {
+                  bool allDatesValid = true;
+                  final Map<String, DateTime> validatedStatusDates = {};
+
+                  for (final entry in dateControllers.entries) {
+                    final date = _parseDateMMDDYYYY(entry.value.text);
+                    if (date == null) {
+                      allDatesValid = false;
+                      break;
+                    }
+                    validatedStatusDates[entry.key] = date;
+                  }
+
+                  if (!allDatesValid) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Invalid date format. Use MM/DD/YYYY'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Update with validated dates
+                  statusDates.clear();
+                  statusDates.addAll(validatedStatusDates);
+                }
+
                 final userId = authProvider.user?.id;
                 if (userId == null) return;
 
@@ -729,8 +1015,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   id: '', // Will be set by the service
                   title: titleController.text,
                   description: descriptionController.text,
-                  status: selectedStatus,
-                  deadline: selectedDeadline,
+                  mainStatus: selectedMainStatus,
+                  subStatus: selectedSubStatus,
+                  statusDates: selectedMainStatus == ProjectMainStatus.proofing
+                      ? statusDates
+                      : {},
+                  deadline: deadline,
                   ownerId: userId,
                   createdAt: DateTime.now(),
                   updatedAt: DateTime.now(),
@@ -741,19 +1031,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final createdProject =
                     await projectProvider.createProject(newProject);
 
-                if (createdProject != null && context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Project created successfully'),
-                    ),
-                  );
-                } else if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error: ${projectProvider.error}'),
-                      backgroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                  );
+                // Handle UI updates if context is still mounted
+                if (context.mounted) {
+                  if (createdProject != null) {
+                    // Explicitly reload projects after creating a new one
+                    final authProvider =
+                        Provider.of<AuthProvider>(context, listen: false);
+                    if (authProvider.user != null) {
+                      projectProvider.loadUserProjects(authProvider.user!.id);
+                    }
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Project created successfully'),
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: ${projectProvider.error}'),
+                        backgroundColor: Theme.of(context).colorScheme.error,
+                      ),
+                    );
+                  }
                 }
               },
               child: const Text('Create'),

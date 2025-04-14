@@ -20,26 +20,51 @@ class TaskList extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
     
+    // Just show an empty task tabs view even when there are no tasks
+    // This allows more space for the project header section
     if (tasks.isEmpty) {
-      return Center(
+      return DefaultTabController(
+        length: TaskStatus.values.length,
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.task_alt,
-              size: 64,
-              color: Colors.grey,
+            TabBar(
+              isScrollable: true,
+              tabs: TaskStatus.values.map((status) {
+                return Tab(
+                  child: Row(
+                    children: [
+                      Text(_getStatusLabel(status)),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(status),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Text(
+                          "0",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'No tasks yet',
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Add tasks to track your publishing progress',
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
+            const Expanded(
+              child: TabBarView(
+                children: [
+                  // Empty views for each tab
+                  SizedBox(), // Todo
+                  SizedBox(), // In Progress
+                  SizedBox(), // Completed
+                  SizedBox(), // Blocked
+                  SizedBox(), // Canceled
+                ],
+              ),
             ),
           ],
         ),

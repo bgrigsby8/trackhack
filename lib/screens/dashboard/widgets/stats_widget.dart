@@ -12,14 +12,21 @@ class StatsWidget extends StatelessWidget {
     final projectProvider = Provider.of<ProjectProvider>(context);
     final projects = projectProvider.projects;
 
-    // Count projects by status
-    final statusCounts = <ProjectStatus, int>{};
-    for (final status in ProjectStatus.values) {
+    // Count projects by main status
+    final statusCounts = <ProjectMainStatus, int>{};
+    for (final status in ProjectMainStatus.values) {
       statusCounts[status] = 0;
     }
 
+    // Count by sub-status for specific categories
+    final subStatusCounts = <String, int>{};
+    
     for (final project in projects) {
-      statusCounts[project.status] = (statusCounts[project.status] ?? 0) + 1;
+      // Update main status counts
+      statusCounts[project.mainStatus] = (statusCounts[project.mainStatus] ?? 0) + 1;
+      
+      // Update sub-status counts
+      subStatusCounts[project.subStatus] = (subStatusCounts[project.subStatus] ?? 0) + 1;
     }
 
     // Calculate deadlines
@@ -28,16 +35,16 @@ class StatsWidget extends StatelessWidget {
         .where((p) =>
             p.deadline.isAfter(now) &&
             p.deadline.difference(now).inDays <= 7 &&
-            p.status != ProjectStatus.published &&
-            p.status != ProjectStatus.inDesign)
+            p.mainStatus != ProjectMainStatus.other || 
+            (p.mainStatus == ProjectMainStatus.other && p.subStatus != 'published'))
         .toList()
       ..sort((a, b) => a.deadline.compareTo(b.deadline));
 
     final missedDeadlines = projects
         .where((p) =>
             p.deadline.isBefore(now) &&
-            p.status != ProjectStatus.published &&
-            p.status != ProjectStatus.paging)
+            p.mainStatus != ProjectMainStatus.other || 
+            (p.mainStatus == ProjectMainStatus.other && p.subStatus != 'published'))
         .length;
 
     return Column(
@@ -62,14 +69,14 @@ class StatsWidget extends StatelessWidget {
               _buildStatCard(
                 context,
                 title: 'In Progress',
-                value: statusCounts[ProjectStatus.proofing].toString(),
+                value: statusCounts[ProjectMainStatus.proofing].toString(),
                 icon: Icons.pending_actions,
-                color: Colors.amber,
+                color: Colors.orange,
               ),
               _buildStatCard(
                 context,
                 title: 'Published',
-                value: statusCounts[ProjectStatus.published].toString(),
+                value: subStatusCounts['published']?.toString() ?? '0',
                 icon: Icons.check_circle,
                 color: Colors.green,
               ),

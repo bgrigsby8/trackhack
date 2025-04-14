@@ -35,7 +35,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'TrackHack',
         theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
+        darkTheme: AppTheme.lightTheme,
         themeMode: ThemeMode.system,
         debugShowCheckedModeBanner: false,
         home: const AuthWrapper(),

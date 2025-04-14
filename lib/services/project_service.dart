@@ -56,10 +56,35 @@ class ProjectService {
           .where('ownerId', isEqualTo: userId)
           .snapshots()
           .map((snapshot) {
-            return snapshot.docs
-                .map((doc) => ProjectModel.fromMap(doc.data()))
-                .toList();
-          });
+        final projects = <ProjectModel>[];
+
+        for (final doc in snapshot.docs) {
+          try {
+            final data = doc.data();
+
+            // Check for missing fields to debug the null error
+            final fieldCheck = {
+              'mainStatus': data['mainStatus'],
+              'deadline': data['deadline'],
+              'createdAt': data['createdAt'],
+              'updatedAt': data['updatedAt']
+            };
+
+            // Only add projects with all required fields
+            if (fieldCheck.values.every((value) => value != null) &&
+                data['title'] != null &&
+                data['description'] != null &&
+                data['ownerId'] != null) {
+              projects.add(ProjectModel.fromMap(data));
+            }
+          } catch (e) {
+            print("Error processing project document: $e");
+            // Skip this document and continue with others
+          }
+        }
+
+        return projects;
+      });
     } catch (e) {
       rethrow;
     }
@@ -96,5 +121,4 @@ class ProjectService {
       rethrow;
     }
   }
-
 }

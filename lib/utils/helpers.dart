@@ -9,10 +9,10 @@ class AppHelpers {
   static String formatDate(DateTime date, {String format = 'MMM d, yyyy'}) {
     return DateFormat(format).format(date);
   }
-  
+
   static String timeAgo(DateTime dateTime) {
     final difference = DateTime.now().difference(dateTime);
-    
+
     if (difference.inDays > 365) {
       return '${(difference.inDays / 365).floor()} year(s) ago';
     } else if (difference.inDays > 30) {
@@ -29,25 +29,21 @@ class AppHelpers {
   }
 
   // Project status color helper
-  static Color getProjectStatusColor(ProjectStatus status) {
+  static Color getProjectStatusColor(ProjectMainStatus status) {
     switch (status) {
-      case ProjectStatus.notTransmitted:
-        return Colors.grey;
-      case ProjectStatus.inDesign:
+      case ProjectMainStatus.design:
         return Colors.purple;
-      case ProjectStatus.paging:
+      case ProjectMainStatus.paging:
         return Colors.blue;
-      case ProjectStatus.proofing:
+      case ProjectMainStatus.proofing:
         return Colors.orange;
-      case ProjectStatus.press:
-        return Colors.teal;
-      case ProjectStatus.epub:
-        return Colors.amber;
-      case ProjectStatus.published:
+      case ProjectMainStatus.epub:
         return Colors.green;
+      case ProjectMainStatus.other:
+        return Colors.grey;
     }
   }
-  
+
   // Task status color helper
   static Color getTaskStatusColor(TaskStatus status) {
     switch (status) {
@@ -63,7 +59,7 @@ class AppHelpers {
         return Colors.grey.shade700;
     }
   }
-  
+
   // Task priority color helper
   static Color getTaskPriorityColor(TaskPriority priority) {
     switch (priority) {
@@ -77,7 +73,7 @@ class AppHelpers {
         return Colors.red;
     }
   }
-  
+
   // String truncation helper
   static String truncateString(String text, int maxLength) {
     if (text.length <= maxLength) {
@@ -85,7 +81,7 @@ class AppHelpers {
     }
     return '${text.substring(0, maxLength)}...';
   }
-  
+
   // Check if a string is a valid email
   static bool isValidEmail(String email) {
     final emailRegExp = RegExp(
@@ -93,15 +89,16 @@ class AppHelpers {
     );
     return emailRegExp.hasMatch(email);
   }
-  
+
   // Calculate progress percentage
   static double calculateProgress(List<TaskModel> tasks) {
     if (tasks.isEmpty) return 0.0;
-    
-    final completedTasks = tasks.where((t) => t.status == TaskStatus.completed).length;
+
+    final completedTasks =
+        tasks.where((t) => t.status == TaskStatus.completed).length;
     return completedTasks / tasks.length;
   }
-  
+
   // Show a snackbar with custom styling
   static void showSnackBar(
     BuildContext context,

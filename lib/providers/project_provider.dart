@@ -33,33 +33,36 @@ class ProjectProvider with ChangeNotifier {
 
     try {
       // Cancel previous subscription if it exists
-      _projectsSubscription?.cancel();
+      if (_projectsSubscription != null) {
+        _projectsSubscription?.cancel();
+      }
 
       // Subscribe to user projects stream
-      _projectsSubscription = _projectService
-          .getUserProjects(userId)
-          .listen(
-            (projectsList) {
-              _projects = projectsList;
-              _loading = false;
+      _projectsSubscription = _projectService.getUserProjects(userId).listen(
+        (projectsList) {
+          // Sort by last updated to show newest first
+          projectsList.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
 
-              // If current project exists, update it with fresh data
-              if (_currentProject != null) {
-                final updatedProject = _projects.firstWhere(
-                  (p) => p.id == _currentProject!.id,
-                  orElse: () => _currentProject!,
-                );
-                _currentProject = updatedProject;
-              }
+          _projects = projectsList;
+          _loading = false;
 
-              notifyListeners();
-            },
-            onError: (e) {
-              _error = e.toString();
-              _loading = false;
-              notifyListeners();
-            },
-          );
+          // If current project exists, update it with fresh data
+          if (_currentProject != null) {
+            final updatedProject = _projects.firstWhere(
+              (p) => p.id == _currentProject!.id,
+              orElse: () => _currentProject!,
+            );
+            _currentProject = updatedProject;
+          }
+
+          notifyListeners();
+        },
+        onError: (e) {
+          _error = e.toString();
+          _loading = false;
+          notifyListeners();
+        },
+      );
     } catch (e) {
       _error = e.toString();
       _loading = false;
@@ -104,12 +107,13 @@ class ProjectProvider with ChangeNotifier {
       notifyListeners();
     }
   }
-  
-  // Update a project's status
-  Future<void> updateProjectStatus(String projectId, ProjectStatus newStatus) async {
+
+  // Update a project's main status
+  Future<void> updateProjectMainStatus(String projectId,
+      ProjectMainStatus newMainStatus, String defaultSubStatus) async {
     try {
       _error = null;
-      
+
       // Find the project in the list
       final projectIndex = _projects.indexWhere((p) => p.id == projectId);
       if (projectIndex == -1) {
@@ -117,24 +121,82 @@ class ProjectProvider with ChangeNotifier {
         notifyListeners();
         return;
       }
-      
+
       // Create updated project
       final updatedProject = _projects[projectIndex].copyWith(
-        status: newStatus,
+        mainStatus: newMainStatus,
+        subStatus: defaultSubStatus,
         updatedAt: DateTime.now(),
       );
-      
+
       // Update in Firestore
       await _projectService.updateProject(updatedProject);
-      
+
       // Update locally
       _projects[projectIndex] = updatedProject;
-      
+
       // If this is the current project, update it too
       if (_currentProject?.id == projectId) {
         _currentProject = updatedProject;
       }
+
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  // Update a project's sub-status
+  Future<void> updateProjectSubStatus(
+      String projectId, String newSubStatus, DateTime? statusDate, {String? subStatus}) async {
+    try {
+      _error = null;
+
+      // Find the project in the list
+      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
+      if (projectIndex == -1) {
+        _error = 'Project not found';
+        notifyListeners();
+        return;
+      }
+
+      // Update status dates
+      Map<String, DateTime> statusDates =
+          Map.from(_projects[projectIndex].statusDates);
+          
+      // If a specific subStatus is provided, update only that status's date
+      // without changing the current project sub-status
+      final String statusToUpdate = subStatus ?? newSubStatus;
       
+      if (statusDate != null) {
+        // Add or update the date
+        statusDates[statusToUpdate] = statusDate;
+      } else if (subStatus != null) {
+        // If statusDate is null and a specific subStatus was provided,
+        // remove that status date (mark as incomplete)
+        statusDates.remove(statusToUpdate);
+      }
+
+      // Create updated project - only change the current subStatus if none was specified
+      final updatedProject = _projects[projectIndex].copyWith(
+        // Only update subStatus if no specific subStatus was provided
+        subStatus: subStatus == null ? newSubStatus : _projects[projectIndex].subStatus,
+        statusDates: statusDates,
+        updatedAt: DateTime.now(),
+      );
+
+      // Update in Firestore
+      await _projectService.updateProject(updatedProject);
+
+      // Update locally
+      _projects[projectIndex] = updatedProject;
+
+      // If this is the current project, update it too
+      if (_currentProject?.id == projectId) {
+        _currentProject = updatedProject;
+      }
+
       notifyListeners();
     } catch (e) {
       _error = e.toString();
@@ -162,9 +224,8 @@ class ProjectProvider with ChangeNotifier {
     }
   }
 
-
   // Get project by ID (used when navigating directly to a project)
-  Future<void> getProjectById(String projectId) async {
+  Future<ProjectModel?> getProjectById(String projectId) async {
     try {
       _loading = true;
       _error = null;
@@ -174,17 +235,30 @@ class ProjectProvider with ChangeNotifier {
       if (project != null) {
         _currentProject = project;
       }
-    } catch (e) {
-      _error = e.toString();
-    } finally {
+      
       _loading = false;
       notifyListeners();
+      return _currentProject;
+    } catch (e) {
+      _error = e.toString();
+      _loading = false;
+      notifyListeners();
+      return null;
     }
   }
 
-  // Get projects by status
-  List<ProjectModel> getProjectsByStatus(ProjectStatus status) {
-    return _projects.where((project) => project.status == status).toList();
+  // Get projects by main status
+  List<ProjectModel> getProjectsByMainStatus(ProjectMainStatus mainStatus) {
+    return _projects
+        .where((project) => project.mainStatus == mainStatus)
+        .toList();
+  }
+
+  // Get projects by sub-status
+  List<ProjectModel> getProjectsBySubStatus(String subStatus) {
+    return _projects
+        .where((project) => project.subStatus == subStatus)
+        .toList();
   }
 
   // Filter projects by search query
