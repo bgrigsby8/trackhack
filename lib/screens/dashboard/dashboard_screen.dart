@@ -5,8 +5,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/project_provider.dart';
 import '../../models/project_model.dart';
 import '../../utils/helpers.dart';
+import '../../widgets/app_drawer.dart';
 import '../project/project_screen.dart';
-import 'widgets/import_csv_dialog.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -79,16 +79,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: TextStyle(fontSize: 25),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.account_circle),
-            onPressed: () => _showUserProfileDialog(context),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _showSignOutDialog(context),
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+            ),
           ),
         ],
       ),
+      endDrawer: const AppDrawer(),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -139,17 +138,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _searchQuery = value;
                 });
               },
-            ),
-          ),
-          const SizedBox(width: 16),
-          // Import CSV button
-          ElevatedButton.icon(
-            onPressed: () => _showImportCsvDialog(context),
-            icon: const Icon(Icons.file_upload),
-            label: const Text('Import CSV'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.green,
-              foregroundColor: Colors.white,
             ),
           ),
         ],
@@ -1620,140 +1608,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _showUserProfileDialog(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final user = authProvider.user;
 
-    if (user == null) return;
 
-    final nameController = TextEditingController(text: user.name);
-    final roleController = TextEditingController(text: user.role);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('User Profile'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Avatar
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: Text(
-                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
-                  style: const TextStyle(
-                    fontSize: 32,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Email (read-only)
-              Text(
-                user.email,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Name
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Name',
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Role
-              TextField(
-                controller: roleController,
-                decoration: const InputDecoration(
-                  labelText: 'Role',
-                  hintText: 'e.g. Editor, Author, Publisher',
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.isEmpty || roleController.text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Please fill in all fields'),
-                  ),
-                );
-                return;
-              }
-
-              Navigator.pop(context);
-
-              await authProvider.updateUserProfile(
-                name: nameController.text,
-                role: roleController.text,
-              );
-
-              if (authProvider.error != null && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: ${authProvider.error}'),
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                );
-              } else if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Profile updated successfully'),
-                  ),
-                );
-              }
-            },
-            child: const Text('Update'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showSignOutDialog(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              authProvider.signOut();
-            },
-            child: const Text('Sign Out'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Show dialog to import CSV file
-  void _showImportCsvDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => const ImportCsvDialog(),
-    );
-  }
 
   // Method to build the metadata section
   Widget _buildMetadataSection({

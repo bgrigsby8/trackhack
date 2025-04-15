@@ -1,12 +1,111 @@
 // lib/widgets/app_drawer.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
-import '../screens/dashboard/dashboard_screen.dart';
-// import '../screens/settings/settings_screen.dart'; // TODO: Implement Settings Screen
+import '../screens/dashboard/widgets/import_csv_dialog.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({super.key});
+
+  // Show user profile dialog
+  void _showUserProfileDialog(
+      BuildContext context, UserModel user, AuthProvider authProvider) {
+    final nameController = TextEditingController(text: user.name);
+    final roleController = TextEditingController(text: user.role);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('User Profile'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Email (read-only)
+              Text(
+                user.email,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Name
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(
+                  labelText: 'Name',
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Role
+              TextField(
+                controller: roleController,
+                decoration: const InputDecoration(
+                  labelText: 'Role',
+                  hintText: 'e.g. Editor, Author, Publisher',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.isEmpty || roleController.text.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please fill in all fields'),
+                  ),
+                );
+                return;
+              }
+
+              Navigator.pop(context);
+
+              await authProvider.updateUserProfile(
+                name: nameController.text,
+                role: roleController.text,
+              );
+
+              if (authProvider.error != null && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: ${authProvider.error}'),
+                    backgroundColor: Theme.of(context).colorScheme.error,
+                  ),
+                );
+              } else if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Profile updated successfully'),
+                  ),
+                );
+              }
+            },
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,72 +119,35 @@ class AppDrawer extends StatelessWidget {
     return Drawer(
       child: Column(
         children: [
-          // User profile header
-          UserAccountsDrawerHeader(
-            accountName: Text(user.name),
-            accountEmail: Text(user.email),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Theme.of(context).colorScheme.secondary,
-              child: Text(
-                user.name.isNotEmpty ? user.name[0].toUpperCase() : '',
-                style: const TextStyle(fontSize: 24.0, color: Colors.white),
+          // User profile header with tap functionality
+          GestureDetector(
+            onTap: () => _showUserProfileDialog(context, user, authProvider),
+            child: UserAccountsDrawerHeader(
+              accountName: Text(user.name),
+              accountEmail: Text(user.email),
+              currentAccountPicture: CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.secondary,
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0].toUpperCase() : '',
+                  style: const TextStyle(fontSize: 24.0, color: Colors.white),
+                ),
               ),
+              decoration: BoxDecoration(color: Theme.of(context).primaryColor),
             ),
-            decoration: BoxDecoration(color: Theme.of(context).primaryColor),
           ),
 
-          // Navigation items
+          // Import CSV option
           ListTile(
-            leading: const Icon(Icons.dashboard_outlined),
-            title: const Text('Dashboard'),
+            leading: const Icon(Icons.file_upload),
+            title: const Text('Import CSV'),
             onTap: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DashboardScreen(),
-                ),
-                (route) => false,
+              Navigator.pop(context);
+              showDialog(
+                context: context,
+                builder: (context) => const ImportCsvDialog(),
               );
             },
           ),
-
-          ListTile(
-            leading: const Icon(Icons.book_outlined),
-            title: const Text('My Projects'),
-            onTap: () {
-              // This is the same as the dashboard for now
-              Navigator.pop(context);
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.task_outlined),
-            title: const Text('My Tasks'),
-            onTap: () {
-              // TODO: Implement My Tasks screen
-              Navigator.pop(context);
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.people_outline),
-            title: const Text('Team'),
-            onTap: () {
-              // TODO: Implement Team screen
-              Navigator.pop(context);
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.calendar_today_outlined),
-            title: const Text('Calendar'),
-            onTap: () {
-              // TODO: Implement Calendar screen
-              Navigator.pop(context);
-            },
-          ),
-
-          const Divider(),
 
           ListTile(
             leading: const Icon(Icons.settings_outlined),
@@ -111,21 +173,20 @@ class AppDrawer extends StatelessWidget {
             onTap: () async {
               final confirm = await showDialog<bool>(
                 context: context,
-                builder:
-                    (context) => AlertDialog(
-                      title: const Text('Sign Out'),
-                      content: const Text('Are you sure you want to sign out?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text('Sign Out'),
-                        ),
-                      ],
+                builder: (context) => AlertDialog(
+                  title: const Text('Sign Out'),
+                  content: const Text('Are you sure you want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
                     ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Sign Out'),
+                    ),
+                  ],
+                ),
               );
 
               if (confirm == true) {
