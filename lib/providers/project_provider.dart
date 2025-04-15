@@ -22,6 +22,13 @@ class ProjectProvider with ChangeNotifier {
   // Set current project
   void setCurrentProject(ProjectModel project) {
     _currentProject = project;
+    
+    // Update the project in the projects list too if it exists
+    final index = _projects.indexWhere((p) => p.id == project.id);
+    if (index != -1) {
+      _projects[index] = project;
+    }
+    
     notifyListeners();
   }
 
@@ -91,20 +98,30 @@ class ProjectProvider with ChangeNotifier {
   // Update a project
   Future<void> updateProject(ProjectModel project) async {
     try {
-      _loading = true;
+      // We don't set loading = true here anymore since we're using optimistic updates
       _error = null;
-      notifyListeners();
-
-      await _projectService.updateProject(project);
-
+      
+      // The UI may already be updated if we're using optimistic updates
+      // Still make sure our local state is updated
+      final projectIndex = _projects.indexWhere((p) => p.id == project.id);
+      if (projectIndex >= 0) {
+        _projects[projectIndex] = project;
+      }
+      
       if (_currentProject?.id == project.id) {
         _currentProject = project;
       }
+      
+      // Notify listeners before the async operation to ensure UI is updated
+      notifyListeners();
+
+      // Now update Firestore without blocking the UI
+      await _projectService.updateProject(project);
     } catch (e) {
       _error = e.toString();
-    } finally {
-      _loading = false;
       notifyListeners();
+      // Rethrow to allow the caller to handle the error
+      rethrow;
     }
   }
 

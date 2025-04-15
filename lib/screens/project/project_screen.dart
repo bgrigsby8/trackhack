@@ -1419,12 +1419,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
         );
       }
 
-      // Save the changes
-      await projectProvider.updateProject(updatedProject);
-
-      // Update UI
+      // OPTIMISTIC UPDATE: Update the UI first before sending to server
       if (mounted) {
         setState(() {
+          // Set the current project to the updated one right away
+          projectProvider.setCurrentProject(updatedProject);
+          
           // If we advanced to a new phase, expand that phase
           if (newMainStatus != null) {
             for (var status in ProjectMainStatus.values) {
@@ -1433,6 +1433,19 @@ class _ProjectScreenState extends State<ProjectScreen> {
           }
         });
       }
+
+      // Save the changes to server in the background
+      projectProvider.updateProject(updatedProject).catchError((error) {
+        // Only show error if still mounted
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error: $error. Status may not have been saved.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

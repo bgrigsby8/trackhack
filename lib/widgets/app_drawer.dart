@@ -1,6 +1,7 @@
 // lib/widgets/app_drawer.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:trackhack/models/project_model.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/project_provider.dart';
@@ -14,7 +15,8 @@ class AppDrawer extends StatelessWidget {
   void _exportProjectsToCSV(BuildContext context) {
     final projectProvider =
         Provider.of<ProjectProvider>(context, listen: false);
-    final projects = projectProvider.projects;
+    // Get projects and create a new list to avoid modifying the original
+    final projects = List<ProjectModel>.from(projectProvider.projects);
 
     if (projects.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -24,6 +26,9 @@ class AppDrawer extends StatelessWidget {
       );
       return;
     }
+
+    // Reverse the list so older projects appear first (chronological order)
+    projects.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     // Export the CSV
     CsvExportUtil.exportToCsv(projects, fileName: 'trackhack_export.csv');
