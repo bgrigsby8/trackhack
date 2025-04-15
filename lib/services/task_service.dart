@@ -103,6 +103,7 @@ class TaskService {
     String? assigneeId,
     DateTime? deadline,
     bool? isArchived,
+    bool updateTimestamp = true,
   }) async {
     try {
       final taskRef = _firestore.collection('tasks').doc(taskId);
@@ -124,7 +125,10 @@ class TaskService {
       }
       if (isArchived != null) updates['isArchived'] = isArchived;
 
-      updates['updatedAt'] = DateTime.now().millisecondsSinceEpoch;
+      // Only update timestamp if requested (defaults to true for backward compatibility)
+      if (updateTimestamp) {
+        updates['updatedAt'] = DateTime.now().millisecondsSinceEpoch;
+      }
 
       await taskRef.update(updates);
     } catch (e) {

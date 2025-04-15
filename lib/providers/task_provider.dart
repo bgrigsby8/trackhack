@@ -128,11 +128,15 @@ class TaskProvider with ChangeNotifier {
     TaskPriority? priority,
     String? assigneeId,
     DateTime? deadline,
+    bool updateTimestamp = true,
   }) async {
     try {
       _loading = true;
       _error = null;
       notifyListeners();
+
+      // If we're changing status to completed, don't update the timestamp
+      final bool shouldUpdateTimestamp = !(status == TaskStatus.completed) && updateTimestamp;
 
       await _taskService.updateTask(
         taskId: taskId,
@@ -142,6 +146,7 @@ class TaskProvider with ChangeNotifier {
         priority: priority,
         assigneeId: assigneeId,
         deadline: deadline,
+        updateTimestamp: shouldUpdateTimestamp,
       );
 
       if (_currentTask?.id == taskId) {
@@ -152,7 +157,8 @@ class TaskProvider with ChangeNotifier {
           priority: priority ?? _currentTask!.priority,
           assigneeId: assigneeId ?? _currentTask!.assigneeId,
           deadline: deadline ?? _currentTask!.deadline,
-          updatedAt: DateTime.now(),
+          // Only update the timestamp if we're not marking as completed
+          updatedAt: shouldUpdateTimestamp ? DateTime.now() : _currentTask!.updatedAt,
         );
       }
     } catch (e) {

@@ -65,9 +65,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'TrackHack',
-          style: TextStyle(fontSize: 25),
+        title: const Row(
+          children: [
+            Text(
+              'TrackHack',
+              style: TextStyle(fontSize: 25),
+            ),
+            SizedBox(width: 8),
+            Text(
+              'v1.0.0',
+              style: TextStyle(
+                fontSize: 12, 
+                color: Colors.grey,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
         ),
         actions: [
           Builder(

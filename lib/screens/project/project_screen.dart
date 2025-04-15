@@ -444,7 +444,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
 
     // Check if this substatus is completed
     final bool hasDate = project.isSubStatusCompleted(subStatusValue);
-    final DateTime? statusDate = project.getDateForSubStatus(subStatusValue);
 
     // Is this the current substatus?
     final bool isCurrent =
@@ -490,24 +489,36 @@ class _ProjectScreenState extends State<ProjectScreen> {
           ),
           const SizedBox(width: 8),
           canComplete && !hasDate
-              ? OutlinedButton.icon(
-                  icon: const Icon(Icons.task_alt, size: 16),
-                  label: const Text('Complete'),
-                  onPressed: () =>
-                      _handleStatusUpdate(context, project, subStatusValue),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: color,
-                    side: BorderSide(color: color),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
-                    minimumSize: const Size(0, 32),
-                  ),
+              ? Row(
+                  children: [
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.task_alt, size: 16),
+                      label: const Text('Complete'),
+                      onPressed: () =>
+                          _handleStatusUpdate(context, project, subStatusValue),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: color,
+                        side: BorderSide(color: color),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 0),
+                        minimumSize: const Size(0, 32),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatPlannedDate(subStatusValue, project),
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    )
+                  ],
                 )
               : Text(
-                  hasDate
-                      ? _formatDate(statusDate!) // Show actual completion date
-                      : _formatPlannedDate(subStatusValue,
-                          project), // Show planned date if not completed
+                  _formatPlannedDate(subStatusValue,
+                      project), // Show planned date if not completed
                   style: TextStyle(
                       color: hasDate
                           ? Colors.grey[600]
@@ -574,8 +585,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final descriptionController =
         TextEditingController(text: project.description);
     final isbnController = TextEditingController(text: project.isbn);
-    final productionEditorController = TextEditingController(text: project.productionEditor);
+    final productionEditorController =
+        TextEditingController(text: project.productionEditor);
     final formatController = TextEditingController(text: project.format);
+
+    // Error message state for in-dialog errors
+    String? errorMessage;
 
     // Map to store dates for each sub-status
     final Map<String, DateTime?> scheduledDates = {};
@@ -749,18 +764,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
     // Controllers for metadata text and date fields
     final imprintController = TextEditingController(text: project.imprint);
     final notesController = TextEditingController(text: project.notes);
-    
+
     // Controllers for metadata date fields
     final printerDateController = TextEditingController(
-      text: project.printerDate != null ? _formatDate(project.printerDate!) : ''
-    );
+        text: project.printerDate != null
+            ? _formatDate(project.printerDate!)
+            : '');
     final scDateController = TextEditingController(
-      text: project.scDate != null ? _formatDate(project.scDate!) : ''
-    );
+        text: project.scDate != null ? _formatDate(project.scDate!) : '');
     final pubDateController = TextEditingController(
-      text: project.pubDate != null ? _formatDate(project.pubDate!) : ''
-    );
-    
+        text: project.pubDate != null ? _formatDate(project.pubDate!) : '');
+
     // Controller for UK co-pub
     final ukCoPubController = TextEditingController(text: project.ukCoPub);
     // Boolean values for checkboxes
@@ -781,6 +795,37 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Error message display (will only be visible when there's an error)
+                  if (errorMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: TextStyle(color: Colors.red.shade700),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 16),
+                            onPressed: () =>
+                                setState(() => errorMessage = null),
+                            color: Colors.red.shade700,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                    ),
                   const Text(
                     'Title',
                     style: TextStyle(fontWeight: FontWeight.bold),
@@ -847,7 +892,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     maxLines: 3,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Metadata Section Header
                   const Text(
                     'Metadata',
@@ -857,11 +902,11 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
+
                   // Metadata fields in a compact format
                   _buildMetadataSection(
                     project: project,
-                    context: context, 
+                    context: context,
                     setState: setState,
                     imprintController: imprintController,
                     notesController: notesController,
@@ -876,7 +921,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                       });
                     },
                   ),
-                  
+
                   const SizedBox(height: 16),
 
                   // Project Schedule Section Header
@@ -1158,11 +1203,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     isbnController.text.isEmpty ||
                     productionEditorController.text.isEmpty ||
                     formatController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please fill in all required fields'),
-                    ),
-                  );
+                  setState(() {
+                    errorMessage = 'Please fill in all required fields';
+                  });
                   return;
                 }
 
@@ -1170,12 +1213,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 final validationErrors = validateAllPhaseSequences();
 
                 if (validationErrors.isNotEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(validationErrors.first),
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
+                  setState(() {
+                    errorMessage = validationErrors.first;
+                  });
                   return;
                 }
 
@@ -1201,19 +1241,20 @@ class _ProjectScreenState extends State<ProjectScreen> {
                 // Get metadata values
                 final imprint = imprintController.text.trim();
                 final notes = notesController.text.trim();
-                
+
                 // Helper function to parse dates (ensuring it's available in this scope)
                 DateTime? parseDateFromField(String input) {
                   if (input.isEmpty) return null;
-                  
-                  final RegExp dateRegex = RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
+
+                  final RegExp dateRegex =
+                      RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$');
                   final match = dateRegex.firstMatch(input);
-    
+
                   if (match != null) {
                     final month = int.parse(match.group(1)!);
                     final day = int.parse(match.group(2)!);
                     final year = int.parse(match.group(3)!);
-    
+
                     try {
                       return DateTime(year, month, day);
                     } catch (e) {
@@ -1222,9 +1263,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   }
                   return null;
                 }
-                
+
                 // Parse date fields
-                DateTime? printerDate = parseDateFromField(printerDateController.text);
+                DateTime? printerDate =
+                    parseDateFromField(printerDateController.text);
                 DateTime? scDate = parseDateFromField(scDateController.text);
                 DateTime? pubDate = parseDateFromField(pubDateController.text);
 
@@ -1424,7 +1466,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
         setState(() {
           // Set the current project to the updated one right away
           projectProvider.setCurrentProject(updatedProject);
-          
+
           // If we advanced to a new phase, expand that phase
           if (newMainStatus != null) {
             for (var status in ProjectMainStatus.values) {
@@ -1457,7 +1499,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       }
     }
   }
-  
+
   // Method to build the metadata section
   Widget _buildMetadataSection({
     required ProjectModel project,
@@ -1472,7 +1514,6 @@ class _ProjectScreenState extends State<ProjectScreen> {
     required bool pageCountSent,
     required Function(bool?) onPageCountSentChanged,
   }) {
-    
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1503,7 +1544,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         decoration: const InputDecoration(
                           hintText: 'Enter imprint',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                         onChanged: (value) {
                           // We'll handle this in the Save button
@@ -1515,9 +1557,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Row 2: Dates
           Row(
             children: [
@@ -1538,16 +1580,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         decoration: const InputDecoration(
                           hintText: 'MM/DD/YYYY',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               // S.C. Date
               Expanded(
                 child: Column(
@@ -1565,16 +1608,17 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         decoration: const InputDecoration(
                           hintText: 'MM/DD/YYYY',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               // Pub Date
               Expanded(
                 child: Column(
@@ -1592,7 +1636,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         decoration: const InputDecoration(
                           hintText: 'MM/DD/YYYY',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
@@ -1601,9 +1646,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Row 3: Notes
           Row(
             children: [
@@ -1623,7 +1668,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         decoration: const InputDecoration(
                           hintText: 'Additional notes',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 10),
                         ),
                         maxLines: 2,
                       ),
@@ -1633,9 +1679,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Row 4: Checkboxes
           Row(
             children: [
@@ -1656,14 +1702,15 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         decoration: const InputDecoration(
                           hintText: 'UK co-publication details',
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          contentPadding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              
+
               // Page Count Sent checkbox
               Expanded(
                 child: Row(
