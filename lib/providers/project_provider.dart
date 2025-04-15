@@ -94,6 +94,23 @@ class ProjectProvider with ChangeNotifier {
       notifyListeners();
     }
   }
+  
+  // Add a project to the local list without reloading from Firestore
+  // This helps avoid flickering while waiting for the Firestore stream to update
+  void addLocalProject(ProjectModel project) {
+    // Check if the project is already in the list
+    final index = _projects.indexWhere((p) => p.id == project.id);
+    if (index >= 0) {
+      // Update existing project
+      _projects[index] = project;
+    } else {
+      // Add new project
+      _projects.add(project);
+      // Sort by updated date (newest first)
+      _projects.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    }
+    notifyListeners();
+  }
 
   // Update a project
   Future<void> updateProject(ProjectModel project) async {

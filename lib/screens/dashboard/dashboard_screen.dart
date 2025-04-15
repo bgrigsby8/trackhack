@@ -54,17 +54,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final projectProvider = Provider.of<ProjectProvider>(context);
     final user = authProvider.user;
 
-    // Ensure projects are loaded if user exists but projects are empty
-    if (user != null &&
-        !projectProvider.loading &&
-        projectProvider.projects.isEmpty) {
-      // Use a post-frame callback to avoid setState during build
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          projectProvider.loadUserProjects(user.id);
-        }
-      });
-    }
+    // Load projects only in initState, don't trigger it again here
+    // This prevents the flashing effect when loading state changes
 
     if (user == null) {
       return const Scaffold(
@@ -92,25 +83,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _buildSearchAndFilter(context),
-          if (projectProvider.loading)
-            const Expanded(
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (projectProvider.projects.isEmpty)
-            Expanded(child: _buildEmptyProjectsView(context))
-          else
-            Expanded(
-              child: Column(
-                children: [
-                  // Completed books expandable section
-                  _buildCompletedBooksSection(context, projectProvider),
-                  // Main kanban board
-                  Expanded(
-                    child: _buildProjectsGrid(context, projectProvider),
-                  ),
-                ],
-              ),
+          // Use AnimatedSwitcher to smooth transitions between states
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _buildMainContent(projectProvider),
             ),
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
@@ -118,6 +97,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: const Icon(Icons.add),
       ),
     );
+  }
+  
+  Widget _buildMainContent(ProjectProvider projectProvider) {
+    if (projectProvider.loading) {
+      return const Center(
+        key: ValueKey('loading'),
+        child: CircularProgressIndicator(),
+      );
+    } else if (projectProvider.projects.isEmpty) {
+      return _buildEmptyProjectsView(context);
+    } else {
+      return Column(
+        key: ValueKey('projects'),
+        children: [
+          // Completed books expandable section
+          _buildCompletedBooksSection(context, projectProvider),
+          // Main kanban board
+          Expanded(
+            child: _buildProjectsGrid(context, projectProvider),
+          ),
+        ],
+      );
+    }
   }
 
   Widget _buildSearchAndFilter(BuildContext context) {
@@ -1538,18 +1540,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 Navigator.pop(context);
 
+                // Show a loading indicator in the dialog
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Creating project...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                
                 final createdProject =
                     await projectProvider.createProject(newProject);
 
                 // Handle UI updates if context is still mounted
                 if (context.mounted) {
                   if (createdProject != null) {
-                    // Explicitly reload projects after creating a new one
-                    final authProvider =
-                        Provider.of<AuthProvider>(context, listen: false);
-                    if (authProvider.user != null) {
-                      projectProvider.loadUserProjects(authProvider.user!.id);
-                    }
+                    // We don't explicitly reload projects as the stream should handle it
+                    // Just add the new project to the local list for immediate display
+                    projectProvider.addLocalProject(createdProject);
 
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
