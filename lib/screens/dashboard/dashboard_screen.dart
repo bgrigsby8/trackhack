@@ -584,8 +584,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       {bool isOverdue = false}) {
     final theme = Theme.of(context);
 
-    // Get current step label instead of general status
-    final currentStepLabel = _getCurrentStepLabel(project);
+    // We no longer need to calculate this here since we use project.getCurrentStepLabel() directly
 
     // Calculate the due date for the current step (not the overall project deadline)
     final currentStepDueDate = _getStepDueDate(project);
@@ -706,7 +705,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   project.mainStatus)
                               .withValues(alpha: 0.2),
                           label: Text(
-                            currentStepLabel, // Use current step label
+                            project.getCurrentStepLabel(), // Use current step label from model
                             style: TextStyle(
                               color: AppHelpers.getProjectStatusColor(
                                   project.mainStatus),
@@ -770,40 +769,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Helper method to get the current step label (for display)
-  String _getCurrentStepLabel(ProjectModel project) {
-    if (project.isCompleted) {
-      return 'Completed';
-    }
-
-    // Get the list of all sub-statuses for the current main status
-    final subStatuses =
-        ProjectModel.getSubStatusesForMainStatus(project.mainStatus);
-
-    // Look for the next incomplete step that needs attention
-    String? nextIncompleteStep;
-    for (final status in subStatuses) {
-      final value = status['value'];
-      if (value != null && !project.statusDates.containsKey(value)) {
-        // Found the first incomplete step
-        nextIncompleteStep = status['label'];
-        break;
-      }
-    }
-
-    // If we found a next step, use that; otherwise fall back to the current subStatus
-    if (nextIncompleteStep != null) {
-      return nextIncompleteStep;
-    }
-
-    // If all steps in this phase are complete, find the current step (probably the last one completed)
-    final currentSubStatus = subStatuses.firstWhere(
-        (status) => status['value'] == project.subStatus,
-        orElse: () =>
-            {'label': project.statusLabel, 'value': project.subStatus});
-
-    return currentSubStatus['label'] ?? project.statusLabel;
-  }
+  // The getCurrentStepLabel method has been moved to the ProjectModel class
 
   // Helper method to calculate the due date for the current step
   DateTime? _getStepDueDate(ProjectModel project) {

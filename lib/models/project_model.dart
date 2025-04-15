@@ -467,6 +467,39 @@ class ProjectModel {
 
     return null;
   }
+  
+  // Get the current active step label
+  String getCurrentStepLabel() {
+    if (isCompleted) {
+      return 'Completed';
+    }
+
+    // Get the list of all sub-statuses for the current main status
+    final subStatuses = getSubStatusesForMainStatus(mainStatus);
+
+    // Look for the next incomplete step that needs attention
+    String? nextIncompleteStep;
+    for (final status in subStatuses) {
+      final value = status['value']!;
+      if (!statusDates.containsKey(value)) {
+        // Found the first incomplete step
+        nextIncompleteStep = status['label'];
+        break;
+      }
+    }
+
+    // If we found a next step, use that; otherwise fall back to the current subStatus
+    if (nextIncompleteStep != null) {
+      return nextIncompleteStep;
+    }
+
+    // If all steps in this phase are complete, find the current step (probably the last one completed)
+    final currentSubStatus = subStatuses.firstWhere(
+        (status) => status['value'] == subStatus,
+        orElse: () => {'label': statusLabel, 'value': subStatus});
+
+    return currentSubStatus['label'] ?? statusLabel;
+  }
 
   // Get the main category color
   Color getMainStatusColor() {

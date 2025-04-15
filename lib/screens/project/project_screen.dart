@@ -242,8 +242,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      // Get label for the current subStatus
-                                      project.statusLabel,
+                                      // Get label for the actual current step
+                                      project.getCurrentStepLabel(),
                                     ),
                                     const SizedBox(height: 16),
                                     const Text(
