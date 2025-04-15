@@ -899,6 +899,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final projectProvider =
         Provider.of<ProjectProvider>(context, listen: false);
 
+    // Scroll controller to scroll to top when an error occurs
+    final ScrollController scrollController = ScrollController();
+    // Error message state for in-dialog errors
+    String? errorMessage;
+
     final titleController = TextEditingController();
     final isbnController = TextEditingController();
     final descriptionController = TextEditingController();
@@ -1089,13 +1094,67 @@ class _DashboardScreenState extends State<DashboardScreen> {
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.7,
             child: SingleChildScrollView(
+              controller: scrollController,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Title',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  // Required fields note
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      'Fields marked with * are required',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  // Error message display (will only be visible when there's an error)
+                  if (errorMessage != null)
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red.shade700),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: TextStyle(color: Colors.red.shade700),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 16),
+                            onPressed: () => setState(() => errorMessage = null),
+                            color: Colors.red.shade700,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  Row(
+                    children: const [
+                      Text(
+                        'Title',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        ' *',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   TextField(
@@ -1106,9 +1165,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'ISBN',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Row(
+                    children: const [
+                      Text(
+                        'ISBN',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        ' *',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   TextField(
@@ -1465,16 +1535,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                // Basic validation
+                // Basic validation for required fields only
                 if (titleController.text.isEmpty ||
-                    descriptionController.text.isEmpty ||
-                    isbnController.text.isEmpty ||
-                    productionEditorController.text.isEmpty ||
-                    formatController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Please fill in all required fields'),
-                    ),
+                    isbnController.text.isEmpty) {
+                  setState(() {
+                    errorMessage = 'Please fill in all required fields (Title and ISBN)';
+                  });
+                  // Scroll to the top of the dialog to show the error message
+                  scrollController.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
                   );
                   return;
                 }
@@ -1483,11 +1554,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 final validationErrors = validateAllPhaseSequences();
 
                 if (validationErrors.isNotEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(validationErrors.first),
-                      duration: const Duration(seconds: 3),
-                    ),
+                  setState(() {
+                    errorMessage = validationErrors.first;
+                  });
+                  // Scroll to the top of the dialog to show the error message
+                  scrollController.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
                   );
                   return;
                 }
@@ -1551,6 +1625,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   pageCountSent: pageCountSent,
                 );
 
+                // Dispose of the scroll controller
+                scrollController.dispose();
                 Navigator.pop(context);
 
                 // Show a loading indicator in the dialog

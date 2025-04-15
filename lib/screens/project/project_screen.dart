@@ -588,6 +588,9 @@ class _ProjectScreenState extends State<ProjectScreen> {
     final productionEditorController =
         TextEditingController(text: project.productionEditor);
     final formatController = TextEditingController(text: project.format);
+    
+    // Scroll controller to scroll to top when an error occurs
+    final ScrollController scrollController = ScrollController();
 
     // Error message state for in-dialog errors
     String? errorMessage;
@@ -791,10 +794,23 @@ class _ProjectScreenState extends State<ProjectScreen> {
           content: SizedBox(
             width: MediaQuery.of(context).size.width * 0.7,
             child: SingleChildScrollView(
+              controller: scrollController,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Required fields note
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Text(
+                      'Fields marked with * are required',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
                   // Error message display (will only be visible when there's an error)
                   if (errorMessage != null)
                     Container(
@@ -826,9 +842,20 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         ],
                       ),
                     ),
-                  const Text(
-                    'Title',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Row(
+                    children: const [
+                      Text(
+                        'Title',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        ' *',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   TextField(
@@ -839,9 +866,20 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'ISBN',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Row(
+                    children: const [
+                      Text(
+                        'ISBN',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        ' *',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   TextField(
@@ -1197,15 +1235,18 @@ class _ProjectScreenState extends State<ProjectScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
-                // Basic validation
+                // Basic validation for required fields only
                 if (titleController.text.isEmpty ||
-                    descriptionController.text.isEmpty ||
-                    isbnController.text.isEmpty ||
-                    productionEditorController.text.isEmpty ||
-                    formatController.text.isEmpty) {
+                    isbnController.text.isEmpty) {
                   setState(() {
-                    errorMessage = 'Please fill in all required fields';
+                    errorMessage = 'Please fill in all required fields (Title and ISBN)';
                   });
+                  // Scroll to the top of the dialog to show the error message
+                  scrollController.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                  );
                   return;
                 }
 
@@ -1216,6 +1257,12 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   setState(() {
                     errorMessage = validationErrors.first;
                   });
+                  // Scroll to the top of the dialog to show the error message
+                  scrollController.animateTo(
+                    0,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                  );
                   return;
                 }
 
@@ -1290,6 +1337,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   pageCountSent: pageCountSent,
                 );
 
+                // Dispose of the scroll controller
+                scrollController.dispose();
                 Navigator.pop(context);
 
                 await projectProvider.updateProject(updatedProject);
