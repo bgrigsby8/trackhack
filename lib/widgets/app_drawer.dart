@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../providers/project_provider.dart';
-import '../screens/dashboard/dashboard_screen.dart';
 import '../screens/dashboard/widgets/import_csv_dialog.dart';
 import '../utils/csv_export.dart';
 
@@ -13,9 +12,10 @@ class AppDrawer extends StatelessWidget {
 
   // Export projects to CSV
   void _exportProjectsToCSV(BuildContext context) {
-    final projectProvider = Provider.of<ProjectProvider>(context, listen: false);
+    final projectProvider =
+        Provider.of<ProjectProvider>(context, listen: false);
     final projects = projectProvider.projects;
-    
+
     if (projects.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -27,7 +27,7 @@ class AppDrawer extends StatelessWidget {
 
     // Export the CSV
     CsvExportUtil.exportToCsv(projects, fileName: 'trackhack_export.csv');
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Projects exported to CSV successfully'),
@@ -163,59 +163,6 @@ class AppDrawer extends StatelessWidget {
             ),
           ),
 
-          // Navigation items
-          ListTile(
-            leading: const Icon(Icons.dashboard_outlined),
-            title: const Text('Dashboard'),
-            onTap: () {
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const DashboardScreen(),
-                ),
-                (route) => false,
-              );
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.book_outlined),
-            title: const Text('My Projects'),
-            onTap: () {
-              // This is the same as the dashboard for now
-              Navigator.pop(context);
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.task_outlined),
-            title: const Text('My Tasks'),
-            onTap: () {
-              // TODO: Implement My Tasks screen
-              Navigator.pop(context);
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.people_outline),
-            title: const Text('Team'),
-            onTap: () {
-              // TODO: Implement Team screen
-              Navigator.pop(context);
-            },
-          ),
-
-          ListTile(
-            leading: const Icon(Icons.calendar_today_outlined),
-            title: const Text('Calendar'),
-            onTap: () {
-              // TODO: Implement Calendar screen
-              Navigator.pop(context);
-            },
-          ),
-
-          const Divider(),
-
           // Import CSV option
           ListTile(
             leading: const Icon(Icons.file_upload),
@@ -228,7 +175,7 @@ class AppDrawer extends StatelessWidget {
               );
             },
           ),
-          
+
           // Export CSV option
           ListTile(
             leading: const Icon(Icons.file_download),
