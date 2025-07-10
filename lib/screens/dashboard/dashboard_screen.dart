@@ -58,6 +58,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // This prevents the flashing effect when loading state changes
 
     if (user == null) {
+      print("User is null, showing progress screen");
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
@@ -75,7 +76,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Text(
               'v1.0.0',
               style: TextStyle(
-                fontSize: 12, 
+                fontSize: 12,
                 color: Colors.grey,
                 fontWeight: FontWeight.normal,
               ),
@@ -111,7 +112,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-  
+
   Widget _buildMainContent(ProjectProvider projectProvider) {
     if (projectProvider.loading) {
       return const Center(
@@ -720,7 +721,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   project.mainStatus)
                               .withValues(alpha: 0.2),
                           label: Text(
-                            project.getCurrentStepLabel(), // Use current step label from model
+                            project
+                                .getCurrentStepLabel(), // Use current step label from model
                             style: TextStyle(
                               color: AppHelpers.getProjectStatusColor(
                                   project.mainStatus),
@@ -1133,7 +1135,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           ),
                           IconButton(
                             icon: const Icon(Icons.close, size: 16),
-                            onPressed: () => setState(() => errorMessage = null),
+                            onPressed: () =>
+                                setState(() => errorMessage = null),
                             color: Colors.red.shade700,
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
@@ -1539,7 +1542,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 if (titleController.text.isEmpty ||
                     isbnController.text.isEmpty) {
                   setState(() {
-                    errorMessage = 'Please fill in all required fields (Title and ISBN)';
+                    errorMessage =
+                        'Please fill in all required fields (Title and ISBN)';
                   });
                   // Scroll to the top of the dialog to show the error message
                   scrollController.animateTo(
@@ -1636,7 +1640,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     duration: Duration(seconds: 1),
                   ),
                 );
-                
+
                 final createdProject =
                     await projectProvider.createProject(newProject);
 
@@ -1669,9 +1673,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-
-
-
 
   // Method to build the metadata section
   Widget _buildMetadataSection({
