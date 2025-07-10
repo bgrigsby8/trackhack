@@ -74,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             SizedBox(width: 8),
             Text(
-              'v1.0.0',
+              'v1.1.0',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
