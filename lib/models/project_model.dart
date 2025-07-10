@@ -296,13 +296,13 @@ class ProjectModel {
     switch (subStatus) {
       case 'design_initial':
         return 'Initial Design';
-      case 'design_review':
-        return 'Design Review';
-      case 'design_revisions':
-        return 'Design Revisions';
       case 'design_final':
         return 'Final Design';
-      // Legacy support
+      // Legacy support for removed statuses
+      case 'design_review':
+        return 'Design Review (Legacy)';
+      case 'design_revisions':
+        return 'Design Revisions (Legacy)';
       case 'prForm':
         return 'PR Form';
       case 'designSample':
@@ -316,13 +316,13 @@ class ProjectModel {
     switch (subStatus) {
       case 'paging_initial':
         return 'Initial Paging';
-      case 'paging_review':
-        return 'Paging Review';
-      case 'paging_revisions':
-        return 'Paging Revisions';
       case 'paging_final':
         return 'Final Paging';
-      // Legacy support
+      // Legacy support for removed statuses
+      case 'paging_review':
+        return 'Paging Review (Legacy)';
+      case 'paging_revisions':
+        return 'Paging Revisions (Legacy)';
       case 'settingCopy':
         return 'Setting Copy';
       case 'firstPass':
@@ -519,8 +519,6 @@ class ProjectModel {
   static List<Map<String, String>> get designSubStatuses {
     return [
       {'value': 'design_initial', 'label': 'Initial Design'},
-      {'value': 'design_review', 'label': 'Design Review'},
-      {'value': 'design_revisions', 'label': 'Design Revisions'},
       {'value': 'design_final', 'label': 'Final Design'},
     ];
   }
@@ -529,8 +527,6 @@ class ProjectModel {
   static List<Map<String, String>> get pagingSubStatuses {
     return [
       {'value': 'paging_initial', 'label': 'Initial Paging'},
-      {'value': 'paging_review', 'label': 'Paging Review'},
-      {'value': 'paging_revisions', 'label': 'Paging Revisions'},
       {'value': 'paging_final', 'label': 'Final Paging'},
     ];
   }
