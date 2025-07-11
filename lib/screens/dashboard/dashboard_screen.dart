@@ -74,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             SizedBox(width: 8),
             Text(
-              'v1.1.0',
+              'v1.2.0',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey,
@@ -1412,8 +1412,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     decoration: BoxDecoration(
                       color: Colors.pink.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                          color: Colors.pink.withValues(alpha: 0.3)),
+                      border:
+                          Border.all(color: Colors.pink.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
