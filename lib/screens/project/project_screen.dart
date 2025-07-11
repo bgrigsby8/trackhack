@@ -85,6 +85,18 @@ class _ProjectScreenState extends State<ProjectScreen> {
                         ],
                       ),
                     ),
+                    if (!project.isCompleted)
+                      const PopupMenuItem(
+                        value: 'complete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle, size: 20, color: Colors.green),
+                            SizedBox(width: 8),
+                            Text('Mark as Complete',
+                                style: TextStyle(color: Colors.green)),
+                          ],
+                        ),
+                      ),
                     const PopupMenuItem(
                       value: 'delete',
                       child: Row(
@@ -100,6 +112,8 @@ class _ProjectScreenState extends State<ProjectScreen> {
                   onSelected: (value) {
                     if (value == 'edit') {
                       _showEditProjectDialog(context, project);
+                    } else if (value == 'complete') {
+                      _showMarkAsCompleteDialog(context, project);
                     } else if (value == 'delete') {
                       _showDeleteProjectDialog(context, project);
                     }
@@ -1431,6 +1445,83 @@ class _ProjectScreenState extends State<ProjectScreen> {
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMarkAsCompleteDialog(BuildContext context, ProjectModel project) {
+    final projectProvider =
+        Provider.of<ProjectProvider>(context, listen: false);
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Complete'),
+        content: Text(
+          'Are you sure you want to mark "${project.title}" as complete?\n\n'
+          'This will complete all remaining sub-statuses across all phases and mark the project as finished.',
+          style: const TextStyle(height: 1.4),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              
+              try {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Row(
+                        children: [
+                          SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(width: 16),
+                          Text('Marking project as complete...'),
+                        ],
+                      ),
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
+
+                await projectProvider.markProjectAsComplete(project.id);
+
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Project marked as complete!'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 4),
+                    ),
+                  );
+                }
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            child: const Text('Mark as Complete'),
           ),
         ],
       ),

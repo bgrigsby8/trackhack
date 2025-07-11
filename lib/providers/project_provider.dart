@@ -330,6 +330,74 @@ class ProjectProvider with ChangeNotifier {
     }).toList();
   }
 
+  // Mark a project as complete by completing all remaining sub-statuses
+  Future<void> markProjectAsComplete(String projectId) async {
+    try {
+      _error = null;
+
+      // Find the project in the list
+      final projectIndex = _projects.indexWhere((p) => p.id == projectId);
+      if (projectIndex == -1) {
+        _error = 'Project not found';
+        notifyListeners();
+        return;
+      }
+
+      final project = _projects[projectIndex];
+      
+      // If project is already completed, nothing to do
+      if (project.isCompleted) {
+        return;
+      }
+
+      // Create updated status dates map
+      Map<String, DateTime> statusDates = Map.from(project.statusDates);
+      final now = DateTime.now();
+
+      // Complete all sub-statuses in all phases
+      final allSubStatuses = [
+        ...ProjectModel.designSubStatuses,
+        ...ProjectModel.pagingSubStatuses,
+        ...ProjectModel.proofingSubStatuses,
+        ...ProjectModel.epubSubStatuses,
+      ];
+
+      for (final subStatus in allSubStatuses) {
+        final statusKey = subStatus['value']!;
+        if (!statusDates.containsKey(statusKey)) {
+          statusDates[statusKey] = now;
+        }
+      }
+
+      // Create updated project with all statuses completed
+      var updatedProject = project.copyWith(
+        mainStatus: ProjectMainStatus.epub,
+        subStatus: ProjectModel.epubSubStatuses.last['value']!,
+        statusDates: statusDates,
+        isCompleted: true,
+        completedAt: now,
+        updatedAt: now,
+      );
+
+      // Update in Firestore
+      await _projectService.updateProject(updatedProject);
+
+      // Update locally
+      _projects[projectIndex] = updatedProject;
+
+      // If this is the current project, update it too
+      if (_currentProject?.id == projectId) {
+        _currentProject = updatedProject;
+      }
+
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
+  }
+
   // Clear error
   void clearError() {
     _error = null;
