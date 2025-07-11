@@ -837,7 +837,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 'Paging':
         return Colors.blue;
       case 'Proofing':
-        return Colors.orange;
+        return Colors.pink;
       case 'EPUB':
         return Colors.green;
       default:
@@ -1410,10 +1410,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.1),
+                      color: Colors.pink.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.3)),
+                          color: Colors.pink.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1423,7 +1423,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.orange,
+                            color: Colors.pink,
                           ),
                         ),
                         const SizedBox(height: 8),

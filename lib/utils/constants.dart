@@ -43,7 +43,7 @@ class AppConstants {
     'notTransmitted': '#78909C', // Grey
     'inDesign': '#AB47BC', // Purple
     'paging': '#42A5F5', // Blue
-    'proofing': '#FF7043', // Orange
+    'proofing': '#FF69B4', // Pink
     'press': '#26A69A', // Teal
     'epub': '#FFA726', // Amber
     'published': '#66BB6A', // Green

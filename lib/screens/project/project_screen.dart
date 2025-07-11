@@ -318,7 +318,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                       'Proofing Phase',
                       ProjectMainStatus.proofing,
                       ProjectModel.proofingSubStatuses,
-                      Colors.orange,
+                      Colors.pink,
                       project),
                 ),
 
@@ -560,7 +560,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
       case ProjectMainStatus.paging:
         return Colors.blue;
       case ProjectMainStatus.proofing:
-        return Colors.orange;
+        return Colors.pink;
       case ProjectMainStatus.epub:
         return Colors.green;
     }
@@ -1122,10 +1122,10 @@ class _ProjectScreenState extends State<ProjectScreen> {
                     padding: const EdgeInsets.all(12),
                     margin: const EdgeInsets.only(bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.1),
+                      color: Colors.pink.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                          color: Colors.orange.withValues(alpha: 0.3)),
+                          color: Colors.pink.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1135,7 +1135,7 @@ class _ProjectScreenState extends State<ProjectScreen> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
-                            color: Colors.orange,
+                            color: Colors.pink,
                           ),
                         ),
                         const SizedBox(height: 8),

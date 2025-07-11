@@ -36,7 +36,7 @@ class AppHelpers {
       case ProjectMainStatus.paging:
         return Colors.blue;
       case ProjectMainStatus.proofing:
-        return Colors.orange;
+        return Colors.pink;
       case ProjectMainStatus.epub:
         return Colors.green;
     }

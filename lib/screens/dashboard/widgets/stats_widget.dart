@@ -65,7 +65,7 @@ class StatsWidget extends StatelessWidget {
                 title: 'In Progress',
                 value: statusCounts[ProjectMainStatus.proofing].toString(),
                 icon: Icons.pending_actions,
-                color: Colors.orange,
+                color: Colors.pink,
               ),
               _buildStatCard(
                 context,
