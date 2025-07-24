@@ -80,11 +80,19 @@ class _ImportCsvDialogState extends State<ImportCsvDialog> {
         throw Exception('No valid projects found in the CSV file');
       }
 
+      // Initialize progress tracking
+      setState(() {
+        _totalProjects = projects.length;
+        _processedProjects = 0;
+      });
+
       // Create projects in database, skipping duplicates
       int successCount = 0;
       int skippedCount = 0;
       
-      for (final project in projects) {
+      for (int i = 0; i < projects.length; i++) {
+        final project = projects[i];
+        
         // Check if ISBN already exists for this user
         final isDuplicate = await projectProvider.isbnExists(project.isbn, userId);
         
@@ -96,6 +104,14 @@ class _ImportCsvDialogState extends State<ImportCsvDialog> {
             successCount++;
           }
         }
+        
+        // Update progress
+        setState(() {
+          _processedProjects = i + 1;
+        });
+        
+        // Small delay to make progress visible for small imports
+        await Future.delayed(const Duration(milliseconds: 50));
       }
 
       setState(() {
@@ -158,6 +174,25 @@ class _ImportCsvDialogState extends State<ImportCsvDialog> {
                   ),
                 ],
               ),
+              if (_isLoading && _totalProjects > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Importing projects... ($_processedProjects/$_totalProjects)',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 8),
+                      LinearProgressIndicator(
+                        value: _processedProjects / _totalProjects,
+                        backgroundColor: Colors.grey[300],
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                      ),
+                    ],
+                  ),
+                ),
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
