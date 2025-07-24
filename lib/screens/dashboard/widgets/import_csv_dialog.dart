@@ -21,7 +21,10 @@ class _ImportCsvDialogState extends State<ImportCsvDialog> {
   bool _isLoading = false;
   String? _errorMessage;
   int _importedCount = 0;
+  int _skippedCount = 0;
   bool _importComplete = false;
+  int _totalProjects = 0;
+  int _processedProjects = 0;
 
   Future<void> _pickFile() async {
     try {
@@ -77,17 +80,27 @@ class _ImportCsvDialogState extends State<ImportCsvDialog> {
         throw Exception('No valid projects found in the CSV file');
       }
 
-      // Create projects in database
+      // Create projects in database, skipping duplicates
       int successCount = 0;
+      int skippedCount = 0;
+      
       for (final project in projects) {
-        final createdProject = await projectProvider.createProject(project);
-        if (createdProject != null) {
-          successCount++;
+        // Check if ISBN already exists for this user
+        final isDuplicate = await projectProvider.isbnExists(project.isbn, userId);
+        
+        if (isDuplicate) {
+          skippedCount++;
+        } else {
+          final createdProject = await projectProvider.createProject(project);
+          if (createdProject != null) {
+            successCount++;
+          }
         }
       }
 
       setState(() {
         _importedCount = successCount;
+        _skippedCount = skippedCount;
         _importComplete = true;
         _isLoading = false;
       });
@@ -156,9 +169,24 @@ class _ImportCsvDialogState extends State<ImportCsvDialog> {
               if (_importComplete)
                 Padding(
                   padding: const EdgeInsets.only(top: 16),
-                  child: Text(
-                    'Successfully imported $_importedCount projects!',
-                    style: const TextStyle(color: Colors.green, fontSize: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Import completed!',
+                        style: TextStyle(color: Colors.green, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '• $_importedCount new projects imported',
+                        style: const TextStyle(color: Colors.green, fontSize: 14),
+                      ),
+                      if (_skippedCount > 0)
+                        Text(
+                          '• $_skippedCount projects skipped (ISBN already exists)',
+                          style: const TextStyle(color: Colors.orange, fontSize: 14),
+                        ),
+                    ],
                   ),
                 ),
               const SizedBox(height: 24),

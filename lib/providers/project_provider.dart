@@ -281,6 +281,17 @@ class ProjectProvider with ChangeNotifier {
     }
   }
 
+  // Check if a project with the given ISBN already exists for the user
+  Future<bool> isbnExists(String isbn, String userId) async {
+    try {
+      return await _projectService.isbnExists(isbn, userId);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   // Get project by ID (used when navigating directly to a project)
   Future<ProjectModel?> getProjectById(String projectId) async {
     try {

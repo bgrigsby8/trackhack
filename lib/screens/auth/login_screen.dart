@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         alignment: Alignment.centerRight,
                         child: TextButton(
                           onPressed: _showForgotPasswordDialog,
-                          child: const Text('Forgot Password? Test1x'),
+                          child: const Text('Forgot Password?'),
                         ),
                       ),
 

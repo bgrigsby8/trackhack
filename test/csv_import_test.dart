@@ -75,5 +75,32 @@ ISBN,Title,Imprint,PE,Status,Next milestone,Printer Date,S.C. Date,Pub Date,Type
       expect(projects[0].pubDate?.month, 5);
       expect(projects[0].pubDate?.day, 6);
     });
+
+    test('parseProjectsFromCsv handles duplicate ISBNs in same CSV', () async {
+      const duplicateIsbnContent = '''
+ISBN,Title,Imprint,PE,Status,Next milestone,Printer Date,S.C. Date,Pub Date,Type,Notes,UK co-pub?,Page Count Sent?
+9780306834530,Joy Prescriptions,Hachette Go,Sean Moreau,ready for press,ready to deliver to SC,2/19/2025,4/15/2025,5/6/2025,HC and EPUB,AQ design,,Y
+9780306834530,Joy Prescriptions Duplicate,Hachette Go,Sean Moreau,in progress,next step,2/19/2025,4/15/2025,5/6/2025,HC and EPUB,Duplicate entry,,Y
+''';
+
+      final duplicateFile = File('test_duplicate.csv');
+      await duplicateFile.writeAsString(duplicateIsbnContent);
+
+      try {
+        final projects =
+            await CsvImportUtil.parseProjectsFromCsv(duplicateFile, testUserId);
+
+        // Both projects should be parsed (duplicate checking happens at service level)
+        expect(projects.length, 2);
+        expect(projects[0].isbn, '9780306834530');
+        expect(projects[1].isbn, '9780306834530');
+        expect(projects[0].title, 'Joy Prescriptions');
+        expect(projects[1].title, 'Joy Prescriptions Duplicate');
+      } finally {
+        if (await duplicateFile.exists()) {
+          await duplicateFile.delete();
+        }
+      }
+    });
   });
 }

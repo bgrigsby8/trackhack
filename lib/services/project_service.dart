@@ -35,6 +35,24 @@ class ProjectService {
     }
   }
 
+  // Check if a project with the given ISBN already exists for the user
+  Future<bool> isbnExists(String isbn, String userId) async {
+    try {
+      if (isbn.isEmpty) return false;
+
+      final query = await _firestore
+          .collection('projects')
+          .where('ownerId', isEqualTo: userId)
+          .where('isbn', isEqualTo: isbn)
+          .limit(1)
+          .get();
+
+      return query.docs.isNotEmpty;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   // Get a project by ID
   Future<ProjectModel?> getProject(String projectId) async {
     try {
